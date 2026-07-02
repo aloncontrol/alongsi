@@ -1,0 +1,132 @@
+{% extends "sidebar_layout.html" %}
+{% block title %}ניהול פרויקטים{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+    <h2 style="margin:0;">🌐 ניהול פרויקטים</h2>
+    <button class="btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ הוסף פרויקט</button>
+</div>
+
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>מזהה פרויקט (GSI)</th>
+                <th>שם פרויקט</th>
+                <th>בקרים פעילים</th>
+                <th>נוצר</th>
+                <th>פעולות</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in projects %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><code style="background:#f0f0f0; padding:2px 8px; border-radius:4px;">{{ p.project_id }}</code></td>
+                <td><strong>{{ p.project_name }}</strong></td>
+                <td>
+                    <span class="perm-badge perm-user">{{ unit_counts.get(p.project_id, 0) }} בקרים</span>
+                </td>
+                <td class="timestamp">{{ p.created_at[:10] if p.created_at else '' }}</td>
+                <td>
+                    <button class="btn-sm btn-edit"
+                        onclick="openEdit({{ p.project_id }}, '{{ p.project_name }}')">
+                        עריכה
+                    </button>
+                    <form method="POST" style="display:inline"
+                          onsubmit="return confirm('למחוק את הפרויקט {{ p.project_name }}?\nכל הבקרים המשויכים יאבדו את שיוך הפרויקט.')">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="project_id" value="{{ p.project_id }}">
+                        <button type="submit" class="btn-sm btn-danger">מחיקה</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center; color:#888;">אין פרויקטים</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div style="margin-top:18px; padding:14px 18px; background:#f8f9fa; border-radius:8px; font-size:0.88rem; color:#555; border:1px solid #e0e0e0;">
+    <strong>💡 הנחיות:</strong>
+    מזהה הפרויקט (GSI ID) נמצא ב-URL של אתר GSI: <code>gsi.galcon-smart.com/project/<strong>8378</strong>/...</code>
+    כדי לניטר פרויקט נוסף — הוסף אותו כאן ועדכן את <code>GSI_PROJECT_IDS</code> ב-<code>config.py</code>.
+</div>
+
+<!-- Add modal -->
+<div id="addModal" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+        <h3>➕ הוספת פרויקט</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="add">
+            <div class="form-group">
+                <label>מזהה פרויקט GSI</label>
+                <input type="number" name="project_id" required placeholder="לדוגמה: 8378"
+                       style="direction:ltr; text-align:left;">
+            </div>
+            <div class="form-group">
+                <label>שם פרויקט</label>
+                <input type="text" name="project_name" required placeholder="לדוגמה: כרם יצחק">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:18px;">
+                <button type="submit" class="btn-primary" style="flex:1">הוסף</button>
+                <button type="button" class="btn-secondary" style="flex:1"
+                    onclick="document.getElementById('addModal').style.display='none'">ביטול</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit modal -->
+<div id="editModal" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+        <h3>✏️ עריכת פרויקט</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="project_id" id="editProjectId">
+            <div class="form-group">
+                <label>מזהה פרויקט GSI</label>
+                <input type="text" id="editProjectIdDisplay" disabled
+                       style="direction:ltr; text-align:left; background:#f5f5f5;">
+            </div>
+            <div class="form-group">
+                <label>שם פרויקט</label>
+                <input type="text" name="project_name" id="editProjectName" required>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:18px;">
+                <button type="submit" class="btn-primary" style="flex:1">שמור</button>
+                <button type="button" class="btn-secondary" style="flex:1"
+                    onclick="document.getElementById('editModal').style.display='none'">ביטול</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.perm-badge { padding: 3px 10px; border-radius: 12px; font-size: 0.82rem; font-weight: 600; }
+.perm-user  { background: #d1ecf1; color: #0c5460; }
+.btn-primary  { padding: 8px 18px; background: #2d6a2d; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.btn-secondary{ padding: 8px 18px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.btn-sm       { padding: 4px 12px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.82rem; }
+.btn-edit     { background: #d1ecf1; color: #0c5460; }
+.btn-danger   { background: #f8d7da; color: #721c24; }
+.modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal-card   { background:#fff; border-radius:12px; padding:32px; width:100%; max-width:420px; }
+.modal-card h3{ margin:0 0 20px; }
+.form-group   { margin-bottom:14px; }
+.form-group label{ display:block; font-size:0.88rem; font-weight:600; margin-bottom:5px; }
+.form-group input{ width:100%; box-sizing:border-box; padding:9px 12px; border:1.5px solid #ccc; border-radius:6px; font-size:0.95rem; }
+</style>
+<script>
+function openEdit(pid, name) {
+    document.getElementById('editProjectId').value = pid;
+    document.getElementById('editProjectIdDisplay').value = pid;
+    document.getElementById('editProjectName').value = name;
+    document.getElementById('editModal').style.display = 'flex';
+}
+</script>
+{% endblock %}

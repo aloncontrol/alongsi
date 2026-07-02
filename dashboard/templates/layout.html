@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ALONGSI - Galcon Monitor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta http-equiv="refresh" content="60">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>ALONGSI</h1>
+            <span class="nav-subtitle">Galcon Smart Monitor</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="{% if request.path == '/' %}active{% endif %}">דשבורד</a>
+            <a href="/alerts" class="{% if request.path == '/alerts' %}active{% endif %}">התראות</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>ALONGSI Monitor v1.0 | Alon Control Systems</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

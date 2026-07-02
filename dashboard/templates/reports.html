@@ -1,0 +1,43 @@
+{% extends "sidebar_layout.html" %}
+{% set active_page = 'reports' %}
+{% block title %}GSI Monitor - דוחות{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📊 דוחות התראות</h2>
+    <a href="/alert-report" class="btn btn-primary">הפק דוח חדש</a>
+</div>
+
+{% if report_log %}
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>תאריך הפקה</th>
+                <th>סה"כ התראות</th>
+                <th>בקרים</th>
+                <th>וואטסאפ</th>
+                <th>פעולה</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in report_log %}
+            <tr onclick="window.location='/reports/{{ r.id }}'" style="cursor:pointer">
+                <td>{{ loop.index }}</td>
+                <td class="timestamp">{{ r.generated_at[:16] | replace('T', ' ') }}</td>
+                <td><span class="badge badge-danger">{{ r.alert_count }}</span></td>
+                <td>{{ r.unit_count }}</td>
+                <td>{% if r.sent_whatsapp %}<span class="badge badge-success">נשלח</span>{% else %}<span style="color:#ccc">—</span>{% endif %}</td>
+                <td><a href="/reports/{{ r.id }}" class="btn btn-secondary btn-sm">צפה</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;color:#888;padding:40px">
+    עדיין לא הופקו דוחות. <a href="/alert-report">הפק דוח ראשון</a>
+</div>
+{% endif %}
+{% endblock %}

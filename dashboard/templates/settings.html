@@ -1,0 +1,154 @@
+{% extends "sidebar_layout.html" %}
+{% set active_page = 'settings' %}
+{% block title %}GSI Monitor - הגדרות{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>⚙️ הגדרות ניטור התראות</h2>
+</div>
+
+<form method="POST" action="/settings">
+
+<!-- Alert types -->
+<div class="card">
+    <h3>סוגי התראות לניטור: <span id="activeCount">{{ active_count }}</span>/{{ total_count }} פעילים</h3>
+
+    {% for cat_name, cat_alerts in categories.items() %}
+    {% set cat_active = cat_alerts | selectattr('is_active') | list | length %}
+    <div class="settings-category">
+        <div class="settings-cat-header" onclick="toggleCat(this)">
+            <span>
+                <span class="settings-cat-icon">{{ icons.get(cat_name, '📋') }}</span>
+                {{ cat_name }}
+            </span>
+            <span>
+                <span class="settings-cat-count">{{ cat_active }}/{{ cat_alerts|length }}</span>
+                &nbsp;
+                <button type="button" class="select-all-btn" onclick="event.stopPropagation(); toggleAll(this, '{{ cat_name }}')">בחר הכל</button>
+                &nbsp;▼
+            </span>
+        </div>
+        <div class="settings-cat-body">
+            <div class="alert-type-grid">
+                {% for alert in cat_alerts %}
+                <label class="alert-type-item">
+                    <input type="checkbox" name="active_codes" value="{{ alert.alert_code }}"
+                           data-cat="{{ cat_name }}"
+                           {% if alert.is_active %}checked{% endif %}
+                           onchange="updateCount()">
+                    {{ alert.alert_name }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Smart rules -->
+<div class="card">
+    <h3>כללי סינון חכמים</h3>
+
+    <div class="schedule-row">
+        <label>💧 דליפת מים - בדוק רק בין שעות:</label>
+        <input type="time" class="time-input" name="leak_hour_start" value="{{ sched.leak_hour_start }}">
+        <span style="color:#666">עד</span>
+        <input type="time" class="time-input" name="leak_hour_end" value="{{ sched.leak_hour_end }}">
+        <small style="color:#999">(ריק = בכל השעות)</small>
+    </div>
+
+    <div class="schedule-row">
+        <label>📉 ספיקה - הצג בדוח רק אם הופיעה:</label>
+        <input type="number" class="time-input" name="flow_min_count" value="{{ sched.flow_min_count }}" min="0" max="99" style="width:70px">
+        <span style="color:#666">פעמים בתוך</span>
+        <input type="number" class="time-input" name="flow_hours_window" value="{{ sched.flow_hours_window }}" min="1" max="720" style="width:80px">
+        <span style="color:#666">שעות (0 = ללא מגבלה)</span>
+    </div>
+</div>
+
+<!-- Schedule -->
+<div class="card">
+    <h3>⏰ תזמון תהליך מלא (בדיקה + ביטול התראות + דוח)</h3>
+
+    <div class="schedule-row">
+        <label>בדיקה וביטול התראות</label>
+        <label class="toggle-switch">
+            <input type="checkbox" name="is_enabled" {% if sched.is_enabled %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+        </label>
+        <span id="scheduleStatus" style="font-size:0.85rem;color:#666">
+            {% if sched.is_enabled %}פעיל{% else %}מושבת{% endif %}
+        </span>
+    </div>
+
+    <div class="schedule-row">
+        <label>ימים פעילים</label>
+        <div class="day-chips">
+            {% set days = [('0','א'),('1','ב'),('2','ג'),('3','ד'),('4','ה'),('5','ו'),('6','ש')] %}
+            {% set active_days = sched.active_days.split(',') if sched.active_days else [] %}
+            {% for val, label in days %}
+            <div class="day-chip">
+                <input type="checkbox" name="active_days" value="{{ val }}" id="day{{ val }}"
+                       {% if val in active_days %}checked{% endif %}>
+                <label for="day{{ val }}">{{ label }}</label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="schedule-row">
+        <label>שעה ראשונה</label>
+        <input type="time" class="time-input" name="time_1" value="{{ sched.time_1 }}">
+    </div>
+
+    <div class="schedule-row">
+        <label>שעה שנייה</label>
+        <input type="time" class="time-input" name="time_2" value="{{ sched.time_2 or '' }}">
+        <small style="color:#999">(אופציונלי)</small>
+    </div>
+
+    <div class="schedule-row">
+        <label>שלח וואטסאפ</label>
+        <label class="toggle-switch">
+            <input type="checkbox" name="whatsapp_enabled" {% if sched.whatsapp_enabled %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+        </label>
+    </div>
+
+    <div class="schedule-row">
+        <label>מספר וואטסאפ</label>
+        <input type="tel" class="time-input" name="whatsapp_number"
+               value="{{ sched.whatsapp_number or '' }}"
+               placeholder="05XXXXXXXX" style="width:160px">
+    </div>
+</div>
+
+<button type="submit" class="btn btn-primary">💾 שמור הגדרות</button>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCat(header) {
+    const body = header.nextElementSibling;
+    body.classList.toggle('open');
+}
+
+function toggleAll(btn, catName) {
+    const boxes = document.querySelectorAll(`input[data-cat="${catName}"]`);
+    const allChecked = [...boxes].every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
+    btn.textContent = allChecked ? 'בחר הכל' : 'בטל הכל';
+    updateCount();
+}
+
+function updateCount() {
+    const count = document.querySelectorAll('input[name=active_codes]:checked').length;
+    document.getElementById('activeCount').textContent = count;
+}
+
+// Open first category by default
+document.querySelector('.settings-cat-body')?.classList.add('open');
+</script>
+{% endblock %}

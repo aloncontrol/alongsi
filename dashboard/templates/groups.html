@@ -1,0 +1,87 @@
+{% extends "sidebar_layout.html" %}
+{% set active_page = 'groups' %}
+{% block title %}GSI Monitor - קבוצות אזור{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🔗 ניהול אזורים / קבוצות</h2>
+    <button form="groupsForm" type="submit" class="btn btn-primary">💾 שמור הכל</button>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+    <p style="margin:0;font-size:0.88rem;color:#555">
+        הגדר לכל בקר שם קבוצה/אזור (לדוגמה: מלונות אילת, ים המלח, תל אביב).
+        הדוחות יקובצו לפי הגדרה זו.
+    </p>
+</div>
+
+<div class="card" style="padding:14px 16px;margin-bottom:14px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:0.85rem;font-weight:600">שייך מסומנים ל:</label>
+        <input type="text" id="bulkGroup" placeholder="שם קבוצה..." class="group-input">
+        <button type="button" onclick="bulkAssign()" class="btn btn-secondary btn-sm">החל על מסומנים</button>
+        <input type="text" id="tableSearch" placeholder="חיפוש בקר..." class="group-input" oninput="filterUnits()">
+    </div>
+</div>
+
+<form id="groupsForm" method="POST" action="/groups">
+<div class="table-wrap">
+    <table class="data-table" id="unitsTable">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>#</th>
+                <th>שם יחידה</th>
+                <th>מודל</th>
+                <th>כתובת</th>
+                <th>קבוצה / אזור</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for unit in units %}
+            <tr data-name="{{ unit.unit_name | lower }}">
+                <td><input type="checkbox" class="unit-check" value="{{ unit.control_unit_id }}"></td>
+                <td>{{ loop.index }}</td>
+                <td style="font-weight:500">{{ unit.unit_name }}</td>
+                <td style="font-size:0.82rem;color:#888">{{ unit.model_view or '-' }}</td>
+                <td style="font-size:0.82rem;color:#888">{{ unit.address or '-' }}</td>
+                <td>
+                    <input type="text"
+                           name="group_{{ unit.control_unit_id }}"
+                           value="{{ groups.get(unit.control_unit_id, '') }}"
+                           placeholder="שם קבוצה..."
+                           class="group-input unit-group-input"
+                           data-unit-id="{{ unit.control_unit_id }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSelectAll() {
+    const checked = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.unit-check').forEach(cb => cb.checked = checked);
+}
+
+function bulkAssign() {
+    const val = document.getElementById('bulkGroup').value.trim();
+    if (!val) return;
+    document.querySelectorAll('.unit-check:checked').forEach(cb => {
+        const row = cb.closest('tr');
+        row.querySelector('.unit-group-input').value = val;
+    });
+}
+
+function filterUnits() {
+    const q = document.getElementById('tableSearch').value.toLowerCase();
+    document.querySelectorAll('#unitsTable tbody tr').forEach(tr => {
+        tr.style.display = tr.dataset.name.includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

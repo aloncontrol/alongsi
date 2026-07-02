@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GSI Monitor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='sidebar.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Top bar -->
+    <header class="topbar">
+        <div class="topbar-right">
+            <span class="topbar-logo">{{ system_title }}</span>
+            <span class="topbar-company">{{ company_name }}</span>
+        </div>
+        <div class="topbar-left">
+            <span class="topbar-status">
+                <span class="status-dot active"></span>
+                מערכת פעילה
+            </span>
+            <a href="/logout" class="topbar-logout">יציאה</a>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <a href="/" class="sidebar-item {% if active_page == 'dashboard' %}active{% endif %}">
+                <span class="sidebar-icon">📊</span>
+                <span>טיפול מיידי</span>
+            </a>
+            <a href="/faults" class="sidebar-item {% if active_page == 'faults' %}active{% endif %}">
+                <span class="sidebar-icon">🔴</span>
+                <span>דשבורד תקלות</span>
+            </a>
+            <a href="/map" class="sidebar-item {% if active_page == 'map' %}active{% endif %}">
+                <span class="sidebar-icon">🗺️</span>
+                <span>מפת בקרים</span>
+            </a>
+            <a href="/alert-report" class="sidebar-item {% if active_page == 'alert-report' %}active{% endif %}">
+                <span class="sidebar-icon">⚠️</span>
+                <span>דיווח התראות שוטפות</span>
+            </a>
+            <a href="/fertilization" class="sidebar-item {% if active_page == 'fertilization' %}active{% endif %}">
+                <span class="sidebar-icon">🌿</span>
+                <span>מדשנות</span>
+            </a>
+            <a href="/irrigation" class="sidebar-item {% if active_page == 'irrigation' %}active{% endif %}">
+                <span class="sidebar-icon">💧</span>
+                <span>תכנון השקיה</span>
+            </a>
+            <a href="/shutdowns" class="sidebar-item {% if active_page == 'shutdowns' %}active{% endif %}">
+                <span class="sidebar-icon">🔒</span>
+                <span>השבתות</span>
+            </a>
+            <a href="/settings" class="sidebar-item {% if active_page == 'settings' %}active{% endif %}">
+                <span class="sidebar-icon">⚙️</span>
+                <span>הגדרות</span>
+            </a>
+            <a href="/groups" class="sidebar-item {% if active_page == 'groups' %}active{% endif %}">
+                <span class="sidebar-icon">🔗</span>
+                <span>ברזים מקושרים</span>
+            </a>
+            <a href="/reports" class="sidebar-item {% if active_page == 'reports' %}active{% endif %}">
+                <span class="sidebar-icon">📊</span>
+                <span>דוחות התראות</span>
+            </a>
+            {% if current_permission == 'admin' %}
+            <a href="/projects" class="sidebar-item {% if active_page == 'projects' %}active{% endif %}">
+                <span class="sidebar-icon">🌐</span>
+                <span>ניהול פרויקטים</span>
+            </a>
+            <a href="/users" class="sidebar-item {% if active_page == 'users' %}active{% endif %}">
+                <span class="sidebar-icon">👥</span>
+                <span>ניהול משתמשים</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <!-- Main content -->
+        <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

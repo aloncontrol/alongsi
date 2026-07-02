@@ -1,0 +1,307 @@
+{% extends "sidebar_layout.html" %}
+{% set active_page = 'alert-report' %}
+{% block title %}GSI Monitor - דיווח התראות{% endblock %}
+
+{% block head %}
+{% if report %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>דיווח התראות שוטפות</h2>
+    <div style="display:flex;gap:10px">
+        <form method="POST" action="/alert-report/run" style="display:inline">
+            <input type="hidden" name="send_whatsapp" value="0">
+            <button type="submit" class="btn btn-primary">הפק דוח עכשיו</button>
+        </form>
+        <button onclick="window.print()" class="btn btn-secondary">הדפס / PDF</button>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+    <div style="font-size:0.85rem;color:#555;display:flex;gap:24px;flex-wrap:wrap">
+        <span>בדיקת התרעות 24 שעות אחורה והפקת דוח להצגה במסך</span>
+        <span>ניטור אוטומטי {% if sched and sched.is_enabled %}פעיל - דוח יומי ב-{{ sched.time_1 }}{% else %}מושבת{% endif %}</span>
+    </div>
+</div>
+
+<!-- Process button -->
+<div class="card">
+    <h3>תזמון תהליך מלא (בדיקה + ביטול התראות + דוח)</h3>
+    <form method="POST" action="/alert-report/run" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input type="hidden" name="mark_noticed" value="1">
+        <button type="submit" name="send_whatsapp" value="0" class="btn btn-primary">
+            בדוק ומחק התראות
+        </button>
+        <button type="submit" name="send_whatsapp" value="1" class="btn btn-primary">
+            שלח וואטסאפ
+        </button>
+        <span style="font-size:0.82rem;color:#777">
+            בדיקת התרעות 24 שעות אחורה, ביטול כל ההתרעות ושליחת דוח בוואטסאפ
+        </span>
+    </form>
+</div>
+
+{% if report %}
+<!-- Summary stat cards -->
+<div class="report-stats-row">
+    <div class="report-stat-card report-stat-danger">
+        <div class="report-stat-value">{{ report.total_alerts }}</div>
+        <div class="report-stat-label">התראות</div>
+    </div>
+    <div class="report-stat-card report-stat-warning">
+        <div class="report-stat-value">{{ report.total_units }}</div>
+        <div class="report-stat-label">בקרים</div>
+    </div>
+    <div class="report-stat-card report-stat-info">
+        <div class="report-stat-value">{{ report.groups | length }}</div>
+        <div class="report-stat-label">אזורים</div>
+    </div>
+    <div class="report-stat-card report-stat-time">
+        <div class="report-stat-value">{{ report.generated_at[11:16] }}</div>
+        <div class="report-stat-label">שעת הפקה</div>
+    </div>
+</div>
+
+<!-- Charts row -->
+{% if report.total_alerts > 0 %}
+<div class="report-charts-row">
+    <div class="report-chart-card">
+        <h4>התראות לפי קטגוריה</h4>
+        <div class="report-chart-wrap">
+            <canvas id="chartCategory"></canvas>
+        </div>
+    </div>
+    <div class="report-chart-card">
+        <h4>התראות לפי אזור</h4>
+        <div class="report-chart-wrap">
+            <canvas id="chartGroup"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Toolbar -->
+<div class="report-toolbar">
+    <span class="report-meta">
+        דוח נוצר: {{ report.generated_at[:16] | replace('T', ', ') }}
+    </span>
+    <button onclick="window.print()" class="btn btn-secondary btn-sm">הדפס / PDF</button>
+    <div style="display:flex;gap:6px;margin-right:auto">
+        <button onclick="filterBy('group')" class="btn btn-secondary btn-sm" id="btn-group">לפי אזור / מלון</button>
+        <button onclick="filterBy('type')" class="btn btn-secondary btn-sm" id="btn-type">לפי סוג התרעה</button>
+    </div>
+</div>
+
+<!-- Group view -->
+<div id="view-group">
+{% if report.groups %}
+    {% for group in report.groups %}
+    <div class="report-group">
+        <div class="report-group-header" onclick="toggleGroup(this)">
+            <span class="report-group-title">{{ group.name }}</span>
+            <span class="report-group-stats">
+                <span class="badge badge-danger">{{ group.alert_count }} תקלות</span>
+                <span class="badge badge-warning">{{ group.unit_count }} בקרים</span>
+                <span class="report-group-toggle">&#x25BC;</span>
+            </span>
+        </div>
+        <div class="report-group-body open">
+            {% for unit in group.units %}
+            <div class="report-unit">
+                <div class="report-unit-header">
+                    {{ unit.name }} — {{ unit.count }} תקלות
+                </div>
+                {% for alert in unit.alerts %}
+                {% set cat_color = {
+                    'ספיקה וזרימה': '#1976d2',
+                    'דישון': '#7b1fa2',
+                    'סוללה וחשמל': '#f57c00',
+                    'חומרה': '#d32f2f',
+                    'תקשורת': '#0097a7',
+                    'חיישנים וכניסות': '#388e3c',
+                    'מערכת': '#455a64',
+                    'מזג אוויר': '#5c6bc0'
+                }.get(alert.category, '#666') %}
+                <div class="report-alert-card" style="border-right-color: {{ cat_color }}">
+                    <div class="report-alert-card-header">
+                        <span class="report-alert-icon">{{ report.category_icons.get(alert.category, '⚠️') }}</span>
+                        <span class="report-alert-card-name">{{ alert.alert_name }}</span>
+                        <span class="report-alert-cat-badge" style="background: {{ cat_color }}">{{ alert.category or 'אחר' }}</span>
+                    </div>
+                    <div class="report-alert-card-details">
+                        <span class="report-alert-card-date">{{ alert.record_date[:16] | replace('T',' ') if alert.record_date else '-' }}</span>
+                        {% if alert.station_name %}<span class="report-alert-card-station">{{ alert.station_name }}</span>{% endif %}
+                        {% if alert.water_quantity %}<span class="report-alert-card-water">{{ alert.water_quantity }} קוב</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card" style="text-align:center;color:#888;padding:40px">
+        אין התראות פעילות ב-24 השעות האחרונות
+    </div>
+{% endif %}
+</div>
+
+<!-- Type view -->
+<div id="view-type" style="display:none">
+{% if report.groups %}
+    {% set ns = namespace(by_cat={}) %}
+    {% for group in report.groups %}
+      {% for unit in group.units %}
+        {% for alert in unit.alerts %}
+          {% set cat = alert.category or 'אחר' %}
+          {% if cat not in ns.by_cat %}
+            {% set _ = ns.by_cat.update({cat: []}) %}
+          {% endif %}
+          {% set _ = ns.by_cat[cat].append({'alert': alert, 'unit_name': unit.name, 'group_name': group.name}) %}
+        {% endfor %}
+      {% endfor %}
+    {% endfor %}
+
+    {% for cat, items in ns.by_cat.items() %}
+    {% set cat_color = {
+        'ספיקה וזרימה': '#1976d2',
+        'דישון': '#7b1fa2',
+        'סוללה וחשמל': '#f57c00',
+        'חומרה': '#d32f2f',
+        'תקשורת': '#0097a7',
+        'חיישנים וכניסות': '#388e3c',
+        'מערכת': '#455a64',
+        'מזג אוויר': '#5c6bc0'
+    }.get(cat, '#666') %}
+    <div class="report-group">
+        <div class="report-group-header" onclick="toggleGroup(this)" style="border-right: 4px solid {{ cat_color }}">
+            <span class="report-group-title">{{ report.category_icons.get(cat, '⚠️') }} {{ cat }}</span>
+            <span class="report-group-stats">
+                <span class="badge badge-danger">{{ items | length }} התראות</span>
+                <span class="report-group-toggle">&#x25BC;</span>
+            </span>
+        </div>
+        <div class="report-group-body open">
+            {% for item in items %}
+            <div class="report-alert-card" style="border-right-color: {{ cat_color }}">
+                <div class="report-alert-card-header">
+                    <span class="report-alert-card-name">{{ item.alert.alert_name }}</span>
+                    <span class="report-alert-card-unit">{{ item.unit_name }}</span>
+                </div>
+                <div class="report-alert-card-details">
+                    <span class="report-alert-card-date">{{ item.alert.record_date[:16] | replace('T',' ') if item.alert.record_date else '-' }}</span>
+                    <span class="report-alert-card-group">{{ item.group_name }}</span>
+                    {% if item.alert.station_name %}<span class="report-alert-card-station">{{ item.alert.station_name }}</span>{% endif %}
+                    {% if item.alert.water_quantity %}<span class="report-alert-card-water">{{ item.alert.water_quantity }} קוב</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+</div>
+
+{% else %}
+<div class="card" style="text-align:center;color:#888;padding:40px">
+    לחץ <strong>הפק דוח עכשיו</strong> להפקת דוח התראות עדכני
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleGroup(header) {
+    const body = header.nextElementSibling;
+    const toggle = header.querySelector('.report-group-toggle');
+    body.classList.toggle('open');
+    toggle.textContent = body.classList.contains('open') ? '\u25BC' : '\u25C0';
+}
+
+function filterBy(view) {
+    document.getElementById('view-group').style.display = view === 'group' ? '' : 'none';
+    document.getElementById('view-type').style.display  = view === 'type'  ? '' : 'none';
+    document.getElementById('btn-group').className = 'btn btn-' + (view === 'group' ? 'primary' : 'secondary') + ' btn-sm';
+    document.getElementById('btn-type').className  = 'btn btn-' + (view === 'type'  ? 'primary' : 'secondary') + ' btn-sm';
+}
+
+{% if report and report.total_alerts > 0 %}
+// Category chart colors
+const catColors = {
+    'ספיקה וזרימה': '#1976d2',
+    'דישון': '#7b1fa2',
+    'סוללה וחשמל': '#f57c00',
+    'חומרה': '#d32f2f',
+    'תקשורת': '#0097a7',
+    'חיישנים וכניסות': '#388e3c',
+    'מערכת': '#455a64',
+    'מזג אוויר': '#5c6bc0'
+};
+
+// Donut chart - alerts by category
+const catData = {{ report.alerts_by_category | tojson }};
+const catLabels = Object.keys(catData);
+const catValues = Object.values(catData);
+const catBg = catLabels.map(l => catColors[l] || '#999');
+
+new Chart(document.getElementById('chartCategory'), {
+    type: 'doughnut',
+    data: {
+        labels: catLabels,
+        datasets: [{
+            data: catValues,
+            backgroundColor: catBg,
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right',
+                rtl: true,
+                labels: { font: { family: 'Segoe UI', size: 12 }, padding: 12 }
+            }
+        }
+    }
+});
+
+// Bar chart - alerts by group
+const grpData = {{ report.alerts_by_group | tojson }};
+const grpLabels = Object.keys(grpData);
+const grpValues = Object.values(grpData);
+
+new Chart(document.getElementById('chartGroup'), {
+    type: 'bar',
+    data: {
+        labels: grpLabels,
+        datasets: [{
+            label: 'התראות',
+            data: grpValues,
+            backgroundColor: '#2d6a4f',
+            borderRadius: 6,
+            maxBarThickness: 40
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: grpLabels.length > 5 ? 'y' : 'x',
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { font: { family: 'Segoe UI', size: 11 } } },
+            y: { grid: { color: '#f0f0f0' }, ticks: { font: { family: 'Segoe UI', size: 11 } }, beginAtZero: true }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

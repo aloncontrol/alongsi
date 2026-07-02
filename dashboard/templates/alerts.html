@@ -1,0 +1,96 @@
+{% extends "sidebar_layout.html" %}
+{% block title %}GSI Monitor - התראות{% endblock %}
+
+{% block content %}
+<h2>התראות מערכת</h2>
+
+{% if system_alerts %}
+<div class="section">
+    <h3>התראות מערכת ALONGSI</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>תאריך</th>
+                <th>בקר</th>
+                <th>סוג</th>
+                <th>הודעה</th>
+                <th>חומרה</th>
+                <th>פעולה</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in system_alerts %}
+            <tr class="severity-{{ a.severity }}">
+                <td>{{ loop.index }}</td>
+                <td class="timestamp">{{ a.created_at[:19] if a.created_at else '-' }}</td>
+                <td>{{ a.unit_name or '-' }}</td>
+                <td>{{ a.alert_type }}</td>
+                <td>{{ a.message }}</td>
+                <td>
+                    <span class="severity-badge severity-{{ a.severity }}">
+                        {% if a.severity == 'critical' %}קריטי{% elif a.severity == 'warning' %}אזהרה{% else %}מידע{% endif %}
+                    </span>
+                </td>
+                <td>
+                    {% if not a.acknowledged %}
+                    <button class="btn-ack" onclick="acknowledge({{ a.id }}, this)">אישור</button>
+                    {% else %}
+                    <span class="ack-done">אושר</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="section">
+    <h3>התראות GSI</h3>
+    {% if gsi_alerts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>תאריך</th>
+                <th>בקר</th>
+                <th>סוג התראה</th>
+                <th>תחנה</th>
+                <th>ספיקה</th>
+                <th>כמות מים</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in gsi_alerts %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td class="timestamp">{{ a.record_date[:19] if a.record_date else '-' }}</td>
+                <td>{{ a.unit_name or '-' }}</td>
+                <td>{{ get_alert_description(a.alert_code) }}</td>
+                <td>{{ a.station_name or '-' }}</td>
+                <td>{{ a.actual_flow or '-' }}</td>
+                <td>{{ a.water_quantity or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">אין התראות GSI</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function acknowledge(alertId, btn) {
+    fetch('/api/alerts/acknowledge/' + alertId, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                btn.outerHTML = '<span class="ack-done">אושר</span>';
+            }
+        });
+}
+</script>
+{% endblock %}

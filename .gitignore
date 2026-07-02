@@ -1,0 +1,41 @@
+# Database (do not commit - stays on each server)
+*.db
+*.db-*
+*.db-journal
+*.db-wal
+*.db-shm
+gsi_monitor.db*
+
+# Logs
+*.log
+alongsi.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment files (contains secrets)
+.env
+.env.local
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Reports / exports
+reports/
+*.xlsx
+*.pdf

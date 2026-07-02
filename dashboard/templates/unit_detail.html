@@ -1,0 +1,143 @@
+{% extends "sidebar_layout.html" %}
+{% block title %}GSI Monitor - {{ unit.unit_name }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/">דשבורד</a> &laquo; {{ unit.unit_name }}
+</div>
+
+<div class="unit-header">
+    <h2>{{ unit.unit_name }}</h2>
+    <span class="status-badge {% if snapshot and snapshot.connection_status == 1 %}badge-success{% else %}badge-danger{% endif %}">
+        {% if snapshot and snapshot.connection_status == 1 %}מחובר{% else %}מנותק{% endif %}
+    </span>
+</div>
+
+<div class="stats-bar">
+    <div class="stat-card">
+        <div class="stat-value">{{ unit.model_view or '-' }}</div>
+        <div class="stat-label">מודל</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ snapshot.signal_strength if snapshot else '-' }}</div>
+        <div class="stat-label">עוצמת אות</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ snapshot.water_factor if snapshot else '-' }}%</div>
+        <div class="stat-label">אחוזי השקיה</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ unit.valve_num or '-' }}</div>
+        <div class="stat-label">מספר ברזים</div>
+    </div>
+</div>
+
+<div class="unit-info-grid">
+    <div class="info-card">
+        <h3>פרטי בקר</h3>
+        <table class="info-table">
+            <tr><td>מס' סידורי</td><td>{{ unit.serial_number }}</td></tr>
+            <tr><td>כתובת</td><td>{{ unit.address or '-' }}</td></tr>
+            <tr><td>טלפון</td><td>{{ unit.phone or '-' }}</td></tr>
+            <tr><td>גרסת קושחה</td><td>{{ unit.firmware_version or '-' }}</td></tr>
+            <tr><td>סוג תקשורת</td><td>{{ unit.comm_type or '-' }}</td></tr>
+            <tr><td>תחילת עונה</td><td>{{ unit.season_start[:10] if unit.season_start else '-' }}</td></tr>
+            <tr><td>סוף עונה</td><td>{{ unit.season_end[:10] if unit.season_end else '-' }}</td></tr>
+            {% if unit.description %}
+            <tr><td>תיאור</td><td class="description">{{ unit.description }}</td></tr>
+            {% endif %}
+        </table>
+    </div>
+
+    {% if weather %}
+    <div class="info-card">
+        <h3>תחזית מזג אוויר</h3>
+        <div class="weather-grid">
+            {% for w in weather %}
+            <div class="weather-day">
+                <div class="weather-date">{{ w.forecast_date[:10] if w.forecast_date else '' }}</div>
+                <div class="weather-desc">{{ w.description or '' }}</div>
+                <div class="weather-temp">{{ w.temp_min_c|round(0)|int if w.temp_min_c else '-' }}-{{ w.temp_max_c|round(0)|int if w.temp_max_c else '-' }}°C</div>
+                <div class="weather-detail">לחות: {{ w.humidity_avg|round(0)|int if w.humidity_avg else '-' }}%</div>
+                <div class="weather-detail">משקעים: {{ w.precipitation_mm|round(1) if w.precipitation_mm else '0' }}mm</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h3>ברזים ({{ valves|length }})</h3>
+    <div class="valves-grid">
+        {% for v in valves %}
+        <div class="valve-card {% if v.Status == 'Active' %}valve-active{% else %}valve-inactive{% endif %}">
+            <div class="valve-name">{{ v.ValveName }}</div>
+            <div class="valve-type">{{ v.TypeID }}</div>
+            <div class="valve-status">{{ v.Status }}</div>
+            <div class="valve-output">יציאה: {{ v.OutputNumber }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section">
+    <h3>תוכניות השקיה ({{ programs|length }})</h3>
+    {% if programs %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>שם תוכנית</th>
+                <th>מצב</th>
+                <th>סוג</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in programs %}
+            <tr>
+                <td>{{ p.ProgramName or p.get('Name', '-') }}</td>
+                <td>{{ p.Status or p.get('ProgramStatus', '-') }}</td>
+                <td>{{ p.TypeID or p.get('ProgramType', '-') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">אין תוכניות השקיה</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h3>יומן התראות</h3>
+    {% if alerts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>תאריך</th>
+                <th>סוג התראה</th>
+                <th>ברז/תחנה</th>
+                <th>תוכנית</th>
+                <th>ספיקה בפועל</th>
+                <th>כמות מים</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in alerts %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td class="timestamp">{{ a.record_date[:19] if a.record_date else '-' }}</td>
+                <td>{{ get_alert_description(a.alert_code) }}</td>
+                <td>{{ a.station_name or '-' }}</td>
+                <td>{{ a.program_name or '-' }}</td>
+                <td>{{ a.actual_flow or '-' }}</td>
+                <td>{{ a.water_quantity or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">אין התראות</p>
+    {% endif %}
+</div>
+{% endblock %}

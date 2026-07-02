@@ -1,0 +1,347 @@
+{% extends "sidebar_layout.html" %}
+{% block title %}GSI Monitor - טיפול מיידי{% endblock %}
+
+{% block content %}
+<div class="stats-bar">
+    <div class="stat-card">
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-label">סה"כ בקרים</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ connected }}</div>
+        <div class="stat-label">מחוברים</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-value">{{ total_faults }}</div>
+        <div class="stat-label">בקרים עם תקלות</div>
+    </div>
+</div>
+
+{% if fault_categories %}
+<div class="fault-category-grid" style="margin-top: 16px;">
+    {% for cat in fault_categories %}
+    <a href="#fault-cat-{{ loop.index }}" class="fault-summary-card">
+        <div class="fault-summary-icon">{{ cat.icon }}</div>
+        <div class="fault-summary-count">{{ cat.units | length }}</div>
+        <div class="fault-summary-name">{{ cat.name }}</div>
+    </a>
+    {% endfor %}
+</div>
+
+<div style="margin-top: 16px;">
+    {% for cat in fault_categories %}
+    <div class="fault-section" id="fault-cat-{{ loop.index }}">
+        <div class="fault-section-header" onclick="toggleSection(this)">
+            <span class="fault-section-icon">{{ cat.icon }}</span>
+            <span class="fault-section-name">{{ cat.name }}</span>
+            <span class="fault-section-badge badge-warning">{{ cat.units | length }} בקרים</span>
+            <span class="fault-section-arrow">▼</span>
+        </div>
+        <div class="fault-section-body">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>שם בקר</th>
+                        <th>מצב חיבור</th>
+                        <th>שם התקלה</th>
+                        <th>עדכון אחרון</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in cat.units %}
+                    <tr class="unit-row" id="fault-row-{{ u.control_unit_id }}"
+                        onclick="window.location='/unit/{{ u.control_unit_id }}'">
+                        <td>{{ loop.index }}</td>
+                        <td class="unit-name">{{ u.unit_name }}</td>
+                        <td>
+                            <span class="status-badge {% if u.connection_status == 1 %}badge-success{% else %}badge-danger{% endif %}">
+                                {% if u.connection_status == 1 %}מחובר{% else %}מנותק{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if u.primary_alert_name %}
+                            <span class="fault-category-badge">תקלה: {{ u.primary_alert_name }}</span>
+                            {% else %}<span class="no-fault">—</span>{% endif %}
+                        </td>
+                        <td class="timestamp">{{ u.captured_at[:16] if u.captured_at else '-' }}</td>
+                        <td onclick="event.stopPropagation()">
+                            <button class="btn-dismiss"
+                                onclick="dismissFault({{ u.control_unit_id }}, this)">
+                                ✓ סגור
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if system_alerts %}
+<div class="system-alerts-banner" style="margin-top: 20px;">
+    <h3>התראות מערכת ({{ system_alerts|length }})</h3>
+    {% for alert in system_alerts %}
+    <div class="system-alert {{ alert.severity }}">
+        <span class="alert-time">{{ alert.created_at[:16] }}</span>
+        <strong>{{ alert.unit_name }}</strong> - {{ alert.message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="search-bar" style="margin-top: 20px;">
+    <input type="text" id="searchInput" placeholder="חיפוש בקר..." oninput="filterTable()">
+    <select id="statusFilter" onchange="filterTable()">
+        <option value="all">הכל</option>
+        <option value="connected">מחוברים</option>
+        <option value="disconnected">מנותקים</option>
+    </select>
+    <select id="categoryFilter" onchange="filterTable()">
+        <option value="all">כל סוגי תקלות</option>
+        <option value="ספיקה וזרימה">💧 ספיקה וזרימה</option>
+        <option value="דישון">🧪 דישון</option>
+        <option value="סוללה וחשמל">🔋 סוללה וחשמל</option>
+        <option value="חומרה">🔧 חומרה</option>
+        <option value="תקשורת">📡 תקשורת</option>
+        <option value="חיישנים וכניסות">📊 חיישנים וכניסות</option>
+        <option value="מערכת">⚙️ מערכת</option>
+        <option value="מזג אוויר">🌧️ מזג אוויר</option>
+        <option value="">ללא תקלות</option>
+    </select>
+</div>
+
+<div class="table-container">
+    <table class="data-table" id="unitsTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>שם יחידה</th>
+                <th>מצב</th>
+                <th>סוג תקלה</th>
+                <th>אות</th>
+                <th>מודל</th>
+                <th>גרסה</th>
+                <th>מס' סידורי</th>
+                <th>התראות</th>
+                <th>אחוזי השקיה</th>
+                <th>סוללה צהריים (V)</th>
+                <th>סוללה חצות (V)</th>
+                <th>חיבור אחרון</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in snapshots %}
+            <tr class="unit-row {% if s.connection_status == 1 %}row-connected{% else %}row-disconnected{% endif %}"
+                onclick="window.location='/unit/{{ s.control_unit_id }}'"
+                data-name="{{ s.unit_name }}"
+                data-status="{% if s.connection_status == 1 %}connected{% else %}disconnected{% endif %}"
+                data-category="{{ s.primary_alert_category or '' }}">
+                <td>{{ loop.index }}</td>
+                <td class="unit-name">{{ s.unit_name }}</td>
+                <td>
+                    <span class="status-badge {% if s.connection_status == 1 %}badge-success{% else %}badge-danger{% endif %}">
+                        {% if s.connection_status == 1 %}מחובר{% else %}מנותק{% endif %}
+                    </span>
+                </td>
+                <td>
+                    {% if s.primary_alert_category %}
+                    <span class="fault-category-badge">{{ s.primary_alert_category }}</span>
+                    {% if s.primary_alert_name %}
+                    <div class="fault-name">תקלה: {{ s.primary_alert_name }}</div>
+                    {% endif %}
+                    {% else %}
+                    <span class="no-fault">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ s.signal_strength or '-' }}</td>
+                <td>{{ s.model_view or '-' }}</td>
+                <td>{{ s.firmware_version or '-' }}</td>
+                <td class="serial">{{ s.serial_number or '-' }}</td>
+                <td>
+                    {% if s.alerts_count and s.alerts_count > 0 %}
+                    <span class="alert-count">{{ s.alerts_count }}</span>
+                    {% else %}
+                    0
+                    {% endif %}
+                </td>
+                <td>{{ s.water_factor or '-' }}%</td>
+                {% set batt_threshold = 7.3 if s.model_view and 'DC' in s.model_view else 5.6 %}
+                <td {% if s.noon_avg and s.noon_avg < batt_threshold %}class="battery-low"{% endif %}>
+                    {{ "%.2f"|format(s.noon_avg) if s.noon_avg else '-' }}
+                </td>
+                <td {% if s.midnight_avg and s.midnight_avg < batt_threshold %}class="battery-low"{% endif %}>
+                    {{ "%.2f"|format(s.midnight_avg) if s.midnight_avg else '-' }}
+                </td>
+                <td class="timestamp">{{ s.captured_at[:16] if s.captured_at else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.btn-dismiss {
+    padding: 3px 10px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+.btn-dismiss:hover { background: #c8e6c9; }
+.btn-dismiss:disabled { opacity: 0.4; cursor: default; }
+
+/* Auto-refresh bar */
+#refresh-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f0f4ff;
+    border: 1px solid #c5d1f5;
+    border-radius: 8px;
+    padding: 6px 14px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    color: #3a4a8a;
+}
+#refresh-bar .refresh-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+    animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+    0%,100% { opacity:1; }
+    50% { opacity:0.3; }
+}
+#refresh-bar .refresh-progress {
+    flex: 1;
+    height: 4px;
+    background: #dde3f8;
+    border-radius: 2px;
+    overflow: hidden;
+}
+#refresh-bar .refresh-progress-fill {
+    height: 100%;
+    background: #5c6bc0;
+    border-radius: 2px;
+    transition: width 1s linear;
+}
+#refresh-bar .btn-refresh-now {
+    padding: 3px 10px;
+    background: #5c6bc0;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+#refresh-bar .btn-refresh-now:hover { background: #3949ab; }
+</style>
+
+<div id="refresh-bar">
+    <span class="refresh-dot"></span>
+    <span id="refresh-label">מתרענן בעוד 5:00</span>
+    <div class="refresh-progress">
+        <div class="refresh-progress-fill" id="refresh-fill" style="width:100%"></div>
+    </div>
+    <button class="btn-refresh-now" onclick="doRefresh()">🔄 רענן עכשיו</button>
+</div>
+
+<script>
+// ── Auto-refresh countdown ──────────────────────────────────────
+const REFRESH_SECONDS = 300; // 5 minutes
+let secondsLeft = REFRESH_SECONDS;
+let refreshTimer;
+
+function doRefresh() {
+    // Don't reload if user is actively searching
+    const searchVal = document.getElementById('searchInput')?.value || '';
+    if (searchVal.trim()) {
+        // Just reset the timer instead
+        secondsLeft = REFRESH_SECONDS;
+        return;
+    }
+    location.reload();
+}
+
+function updateRefreshBar() {
+    secondsLeft--;
+    if (secondsLeft <= 0) {
+        doRefresh();
+        return;
+    }
+    const mins = Math.floor(secondsLeft / 60);
+    const secs = String(secondsLeft % 60).padStart(2, '0');
+    const label = document.getElementById('refresh-label');
+    const fill  = document.getElementById('refresh-fill');
+    if (label) label.textContent = `מתרענן בעוד ${mins}:${secs}`;
+    if (fill)  fill.style.width = ((secondsLeft / REFRESH_SECONDS) * 100) + '%';
+}
+
+refreshTimer = setInterval(updateRefreshBar, 1000);
+
+// Pause refresh while user is typing in search
+document.addEventListener('DOMContentLoaded', () => {
+    const si = document.getElementById('searchInput');
+    if (si) {
+        si.addEventListener('focus',  () => clearInterval(refreshTimer));
+        si.addEventListener('blur',   () => {
+            secondsLeft = REFRESH_SECONDS;
+            refreshTimer = setInterval(updateRefreshBar, 1000);
+        });
+    }
+});
+</script>
+
+<script>
+function dismissFault(unitId, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('/api/unit/' + unitId + '/dismiss-alerts', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const row = document.getElementById('fault-row-' + unitId);
+                if (row) {
+                    row.style.transition = 'opacity 0.4s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 400);
+                }
+            }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = '✓ סגור'; });
+}
+function toggleSection(header) {
+    const body = header.nextElementSibling;
+    const arrow = header.querySelector('.fault-section-arrow');
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    arrow.textContent = isOpen ? '▶' : '▼';
+}
+function filterTable() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const category = document.getElementById('categoryFilter').value;
+    const rows = document.querySelectorAll('#unitsTable .unit-row');
+    rows.forEach(row => {
+        const name = row.dataset.name.toLowerCase();
+        const rowStatus = row.dataset.status;
+        const rowCategory = row.dataset.category;
+        const matchSearch = name.includes(search);
+        const matchStatus = status === 'all' || rowStatus === status;
+        const matchCategory = category === 'all' || rowCategory === category;
+        row.style.display = matchSearch && matchStatus && matchCategory ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

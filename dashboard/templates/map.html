@@ -1,0 +1,313 @@
+{% extends "sidebar_layout.html" %}
+{% block title %}מפת בקרים — GSI Monitor{% endblock %}
+
+{% block head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+/* ── Map page layout ── */
+.map-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 56px);
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Top legend / filter bar */
+.map-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: #1b2f2a;
+    border-bottom: 1px solid #2e4a42;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.map-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #c5dbd4;
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.legend-item:hover { background: #2e4a42; }
+.legend-item.dimmed { opacity: 0.4; }
+.legend-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35);
+    flex-shrink: 0;
+}
+.legend-dot.green  { background: #4caf50; }
+.legend-dot.red    { background: #f44336; }
+.legend-dot.orange { background: #ff9800; }
+
+.map-summary {
+    margin-right: auto;
+    font-size: 13px;
+    color: #8fc4b4;
+    display: flex;
+    gap: 14px;
+}
+.map-summary span { font-weight: 600; color: #c5dbd4; }
+
+#map {
+    flex: 1;
+    min-height: 0;
+}
+
+/* Popup styling */
+.leaflet-popup-content-wrapper {
+    background: #1b2f2a;
+    color: #c5dbd4;
+    border: 1px solid #2e4a42;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    direction: rtl;
+}
+.leaflet-popup-tip { background: #1b2f2a; }
+.leaflet-popup-content { margin: 14px 16px; min-width: 200px; }
+.popup-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e0f0ea;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #2e4a42;
+    padding-bottom: 6px;
+}
+.popup-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 3px 0;
+    color: #8fc4b4;
+    gap: 10px;
+}
+.popup-row strong { color: #c5dbd4; }
+.popup-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-ok         { background: #1e4a2e; color: #4caf50; }
+.badge-fault      { background: #4a1e1e; color: #f44336; }
+.badge-disconnect { background: #4a3a1e; color: #ff9800; }
+.popup-link {
+    display: block;
+    margin-top: 10px;
+    text-align: center;
+    padding: 5px 12px;
+    background: #2e6b50;
+    color: #e0f0ea;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+}
+.popup-link:hover { background: #3d8f6b; }
+
+/* No-coords notice */
+.no-coords-bar {
+    padding: 6px 20px;
+    background: #3a2a1a;
+    color: #cc9955;
+    font-size: 12px;
+    border-bottom: 1px solid #5a4a2a;
+    flex-shrink: 0;
+}
+.no-coords-bar span { font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-page-wrapper">
+    <!-- Toolbar -->
+    <div class="map-toolbar">
+        <div class="map-legend">
+            <div class="legend-item" id="leg-ok" onclick="toggleFilter('ok')">
+                <div class="legend-dot green"></div>
+                <span>תקין</span>
+            </div>
+            <div class="legend-item" id="leg-fault" onclick="toggleFilter('fault')">
+                <div class="legend-dot red"></div>
+                <span>תקלה פעילה</span>
+            </div>
+            <div class="legend-item" id="leg-disconnected" onclick="toggleFilter('disconnected')">
+                <div class="legend-dot orange"></div>
+                <span>ניתוק תקשורת</span>
+            </div>
+        </div>
+        <div class="map-summary" id="map-summary">
+            <span>טוען...</span>
+        </div>
+    </div>
+    <div id="no-coords-bar" class="no-coords-bar" style="display:none">
+        <span id="no-coords-count">0</span> בקרים ללא קואורדינטות GPS לא מוצגים במפה
+    </div>
+    <div id="map"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLs=" crossorigin=""></script>
+<script>
+// ── Map initialisation ────────────────────────────────────────────
+const map = L.map('map', {
+    center: [31.8, 34.9],   // Israel default centre
+    zoom: 9,
+    zoomControl: true,
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+}).addTo(map);
+
+// ── Custom marker icons ───────────────────────────────────────────
+function makeIcon(color) {
+    const colors = {
+        green:  { fill: '#4caf50', stroke: '#2e7d32' },
+        red:    { fill: '#f44336', stroke: '#b71c1c' },
+        orange: { fill: '#ff9800', stroke: '#e65100' },
+    };
+    const c = colors[color] || colors.green;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36">
+        <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24s12-15 12-24C24 5.373 18.627 0 12 0z"
+              fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/>
+        <circle cx="12" cy="12" r="5" fill="white" opacity="0.85"/>
+    </svg>`;
+    return L.divIcon({
+        html: svg,
+        iconSize:   [24, 36],
+        iconAnchor: [12, 36],
+        popupAnchor:[0, -36],
+        className: '',
+    });
+}
+
+const icons = {
+    green:  makeIcon('green'),
+    red:    makeIcon('red'),
+    orange: makeIcon('orange'),
+};
+
+// ── State ─────────────────────────────────────────────────────────
+const markersLayer = L.layerGroup().addTo(map);
+let allUnits = [];
+let hiddenStatuses = new Set();
+
+// ── Fetch units ───────────────────────────────────────────────────
+fetch('/api/map/units')
+    .then(r => r.json())
+    .then(units => {
+        allUnits = units;
+        renderMarkers();
+        updateSummary();
+        fitMap();
+    })
+    .catch(e => console.error('Map units load error:', e));
+
+function renderMarkers() {
+    markersLayer.clearLayers();
+
+    let noCoords = 0;
+    for (const u of allUnits) {
+        if (!u.lat || !u.lon || u.lat === 0 || u.lon === 0) { noCoords++; continue; }
+        if (hiddenStatuses.has(u.status)) continue;
+
+        const marker = L.marker([u.lat, u.lon], { icon: icons[u.color] });
+        marker.bindPopup(buildPopup(u));
+        markersLayer.addLayer(marker);
+    }
+
+    // Show/hide the "no coords" bar
+    const bar = document.getElementById('no-coords-bar');
+    if (noCoords > 0) {
+        bar.style.display = '';
+        document.getElementById('no-coords-count').textContent = noCoords;
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function buildPopup(u) {
+    const connLabel = u.connection_status === 1
+        ? '<span class="popup-badge badge-ok">מחובר</span>'
+        : '<span class="popup-badge badge-disconnect">מנותק</span>';
+
+    let statusLabel;
+    if (u.status === 'fault') {
+        const name = u.alert_name || 'תקלה פעילה';
+        statusLabel = `<span class="popup-badge badge-fault">${name}</span>`;
+    } else if (u.status === 'disconnected') {
+        statusLabel = '<span class="popup-badge badge-disconnect">ניתוק תקשורת</span>';
+    } else {
+        statusLabel = '<span class="popup-badge badge-ok">תקין</span>';
+    }
+
+    const ts = u.captured_at ? u.captured_at.substring(0, 16).replace('T', ' ') : '—';
+    const sig = u.signal_strength ? `<div class="popup-row"><span>אות:</span><strong>${u.signal_strength}</strong></div>` : '';
+    const addr = u.address ? `<div class="popup-row"><span>כתובת:</span><strong>${u.address}</strong></div>` : '';
+
+    return `
+    <div class="popup-title">${u.name}</div>
+    <div class="popup-row"><span>חיבור:</span>${connLabel}</div>
+    <div class="popup-row"><span>סטטוס:</span>${statusLabel}</div>
+    ${addr}
+    ${sig}
+    <div class="popup-row"><span>עדכון:</span><strong>${ts}</strong></div>
+    <a class="popup-link" href="/unit/${u.id}">פרטי בקר &#8592;</a>
+    `;
+}
+
+function fitMap() {
+    const pts = allUnits
+        .filter(u => u.lat && u.lon && u.lat !== 0 && u.lon !== 0)
+        .map(u => [u.lat, u.lon]);
+    if (pts.length > 0) {
+        map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
+    }
+}
+
+function updateSummary() {
+    const total = allUnits.length;
+    const ok = allUnits.filter(u => u.status === 'ok').length;
+    const fault = allUnits.filter(u => u.status === 'fault').length;
+    const disc = allUnits.filter(u => u.status === 'disconnected').length;
+    document.getElementById('map-summary').innerHTML = `
+        <span>${total} בקרים:</span>
+        <span style="color:#4caf50">${ok} תקינים</span>
+        <span style="color:#f44336">${fault} תקלות</span>
+        <span style="color:#ff9800">${disc} מנותקים</span>
+    `;
+}
+
+function toggleFilter(status) {
+    if (hiddenStatuses.has(status)) {
+        hiddenStatuses.delete(status);
+        document.getElementById('leg-' + status).classList.remove('dimmed');
+    } else {
+        hiddenStatuses.add(status);
+        document.getElementById('leg-' + status).classList.add('dimmed');
+    }
+    renderMarkers();
+}
+</script>
+{% endblock %}

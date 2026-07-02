@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; color: #222; font-size: 12px; }
+h1 { font-size: 16px; color: #1b4332; margin-bottom: 4px; }
+.meta { color: #666; font-size: 11px; margin-bottom: 12px; }
+.group { margin-bottom: 14px; border: 1px solid #ccc; border-radius: 4px; }
+.group-header { background: #e8f5e9; padding: 6px 10px; font-weight: bold; font-size: 12px; }
+.unit-header { padding: 4px 10px 4px 20px; font-weight: 600; color: #1b4332; background: #f9f9f9; }
+.alert-row { display: flex; gap: 12px; padding: 3px 10px 3px 30px; border-bottom: 1px dotted #eee; font-size: 11px; }
+.alert-date { color: #888; min-width: 120px; }
+.totals { display: flex; gap: 20px; margin-bottom: 10px; }
+.total-box { padding: 6px 14px; border-radius: 4px; font-weight: bold; }
+.total-red { background: #ffebee; color: #c62828; }
+.total-orange { background: #fff3e0; color: #e65100; }
+</style>
+</head>
+<body>
+<h1>📊 דוח התראות GSI Monitor</h1>
+<div class="meta">
+    נוצר: {{ report.generated_at[:16] | replace('T', ' ') }} |
+    24 שעות אחרונות
+</div>
+<div class="totals">
+    <div class="total-box total-red">סה"כ התראות: {{ report.total_alerts }}</div>
+    <div class="total-box total-orange">בקרים: {{ report.total_units }}</div>
+</div>
+{% for group in report.groups %}
+<div class="group">
+    <div class="group-header">🌍 {{ group.name }} — {{ group.alert_count }} תקלות | {{ group.unit_count }} בקרים</div>
+    {% for unit in group.units %}
+    <div class="unit-header">📍 {{ unit.name }} ({{ unit.count }} תקלות)</div>
+    {% for alert in unit.alerts %}
+    <div class="alert-row">
+        <span class="alert-date">{{ alert.record_date[:16] | replace('T',' ') if alert.record_date else '-' }}</span>
+        <span>{{ alert.alert_name }}</span>
+        {% if alert.station_name %}<span style="color:#777">{{ alert.station_name }}</span>{% endif %}
+        {% if alert.water_quantity %}<span style="color:#1565c0">{{ alert.water_quantity }} קוב</span>{% endif %}
+    </div>
+    {% endfor %}
+    {% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>

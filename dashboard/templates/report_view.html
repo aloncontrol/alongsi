@@ -1,0 +1,20 @@
+{% extends "sidebar_layout.html" %}
+{% set active_page = 'reports' %}
+{% block title %}GSI Monitor - דוח #{{ report_id }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📊 דוח התראות #{{ report_id }}</h2>
+    <div style="display:flex;gap:8px">
+        <a href="/reports" class="btn btn-secondary btn-sm">← חזור</a>
+        <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ הדפס / PDF</button>
+    </div>
+</div>
+<div class="report-html-content">
+    {{ report_html | safe }}
+</div>
+{% endblock %}

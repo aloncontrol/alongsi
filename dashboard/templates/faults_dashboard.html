@@ -1,0 +1,138 @@
+{% extends "sidebar_layout.html" %}
+{% block title %}GSI Monitor - דשבורד תקלות{% endblock %}
+
+{% block content %}
+<div class="stats-bar">
+    <div class="stat-card">
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-label">סה"כ בקרים</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-value">{{ total_faults }}</div>
+        <div class="stat-label">בקרים עם תקלות</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ total - total_faults }}</div>
+        <div class="stat-label">בקרים תקינים</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-value">{{ categories | selectattr('name', 'ne', 'ללא תקלות') | list | length }}</div>
+        <div class="stat-label">קטגוריות פעילות</div>
+    </div>
+</div>
+
+<!-- Category cards summary -->
+<div class="fault-category-grid">
+    {% for cat in categories %}
+    {% if cat.name != 'ללא תקלות' and cat.units %}
+    <a href="#cat-{{ loop.index }}" class="fault-summary-card">
+        <div class="fault-summary-icon">{{ cat.icon }}</div>
+        <div class="fault-summary-count">{{ cat.units | length }}</div>
+        <div class="fault-summary-name">{{ cat.name }}</div>
+    </a>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Per-category sections -->
+{% for cat in categories %}
+<div class="fault-section" id="cat-{{ loop.index }}">
+    <div class="fault-section-header" onclick="toggleSection(this)">
+        <span class="fault-section-icon">{{ cat.icon }}</span>
+        <span class="fault-section-name">{{ cat.name }}</span>
+        <span class="fault-section-badge {% if cat.name == 'ללא תקלות' %}badge-success{% else %}badge-warning{% endif %}">
+            {{ cat.units | length }} בקרים
+        </span>
+        <span class="fault-section-arrow">▼</span>
+    </div>
+    <div class="fault-section-body">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>שם בקר</th>
+                    <th>מצב חיבור</th>
+                    <th>סוג תקלה</th>
+                    <th>מס' תקלות</th>
+                    <th>עדכון אחרון</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in cat.units %}
+                <tr class="unit-row" onclick="window.location='/unit/{{ u.control_unit_id }}'">
+                    <td>{{ loop.index }}</td>
+                    <td class="unit-name">{{ u.unit_name }}</td>
+                    <td>
+                        <span class="status-badge {% if u.connection_status == 1 %}badge-success{% else %}badge-danger{% endif %}">
+                            {% if u.connection_status == 1 %}מחובר{% else %}מנותק{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if u.primary_alert_name %}
+                        <span class="fault-category-badge">{{ u.primary_alert_name }}</span>
+                        {% else %}
+                        <span class="no-fault">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.alerts_count and u.alerts_count > 0 %}
+                        <span class="alert-count">{{ u.alerts_count }}</span>
+                        {% else %}
+                        <span class="no-fault">0</span>
+                        {% endif %}
+                    </td>
+                    <td class="timestamp">{{ u.captured_at[:16] if u.captured_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+#refresh-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: #f0f4ff; border: 1px solid #c5d1f5;
+    border-radius: 8px; padding: 6px 14px;
+    margin-bottom: 12px; font-size: 0.85rem; color: #3a4a8a;
+}
+#refresh-bar .refresh-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #4caf50; animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+#refresh-bar .refresh-progress { flex:1; height:4px; background:#dde3f8; border-radius:2px; overflow:hidden; }
+#refresh-bar .refresh-progress-fill { height:100%; background:#5c6bc0; border-radius:2px; transition:width 1s linear; }
+#refresh-bar .btn-refresh-now { padding:3px 10px; background:#5c6bc0; color:white; border:none; border-radius:5px; cursor:pointer; font-size:0.8rem; }
+#refresh-bar .btn-refresh-now:hover { background:#3949ab; }
+</style>
+<div id="refresh-bar">
+    <span class="refresh-dot"></span>
+    <span id="refresh-label">מתרענן בעוד 5:00</span>
+    <div class="refresh-progress"><div class="refresh-progress-fill" id="refresh-fill" style="width:100%"></div></div>
+    <button class="btn-refresh-now" onclick="location.reload()">🔄 רענן עכשיו</button>
+</div>
+<script>
+const REFRESH_SECONDS = 300;
+let secondsLeft = REFRESH_SECONDS;
+setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft <= 0) { location.reload(); return; }
+    const mins = Math.floor(secondsLeft / 60);
+    const secs = String(secondsLeft % 60).padStart(2, '0');
+    document.getElementById('refresh-label').textContent = `מתרענן בעוד ${mins}:${secs}`;
+    document.getElementById('refresh-fill').style.width = ((secondsLeft / REFRESH_SECONDS) * 100) + '%';
+}, 1000);
+
+function toggleSection(header) {
+    const body = header.nextElementSibling;
+    const arrow = header.querySelector('.fault-section-arrow');
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    arrow.textContent = isOpen ? '▶' : '▼';
+}
+</script>
+{% endblock %}

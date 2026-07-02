@@ -1,0 +1,9 @@
+@media print {
+    .topbar, .sidebar, .page-header .btn, .report-toolbar,
+    .card:first-child, nav, footer,
+    .report-charts-row, .report-stats-row { display: none !important; }
+    .main-content { padding: 0; }
+    .app-layout { display: block; }
+    .report-group-body { display: block !important; }
+    body { font-size: 11px; }
+}
