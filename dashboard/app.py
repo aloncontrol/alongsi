@@ -158,12 +158,14 @@ def index():
     system_alerts = get_system_alerts(conn, limit=10, unacknowledged_only=True)
     primary_alerts = get_primary_active_alerts_per_unit(conn, pids)
     battery_stats = get_all_battery_stats(conn)
+    all_projects = get_all_projects(conn)
     conn.close()
 
     total = len(snapshots)
     connected = sum(1 for s in snapshots if s["connection_status"] == 1)
     disconnected = total - connected
     with_alerts = sum(1 for s in snapshots if (s["alerts_count"] or 0) > 0)
+    irrigating = sum(1 for s in snapshots if (s["output_state"] or 0) > 0)
 
     # Enrich each snapshot with primary fault category
     enriched = []
@@ -212,14 +214,35 @@ def index():
     cat_list = [c for c in fault_categories.values() if c["units"]]
     total_faults = sum(1 for d in enriched if d["primary_alert_category"])
 
+    # Per-project summary for the Projects tab
+    project_map = {p["project_id"]: p["project_name"] for p in all_projects}
+    proj_stats = {}
+    for d in enriched:
+        pid = d.get("project_id")
+        if pid not in proj_stats:
+            proj_stats[pid] = {"id": pid,
+                               "name": project_map.get(pid, f"פרויקט {pid}"),
+                               "total": 0, "irrigating": 0,
+                               "disconnected": 0, "faults": 0}
+        st = proj_stats[pid]
+        st["total"] += 1
+        if (d.get("output_state") or 0) > 0:
+            st["irrigating"] += 1
+        if d["connection_status"] != 1:
+            st["disconnected"] += 1
+        if d.get("primary_alert_category") and d["connection_status"] == 1:
+            st["faults"] += 1
+
     return render_template("dashboard.html",
         active_page="dashboard",
         snapshots=enriched,
         total=total, connected=connected,
         disconnected=disconnected, total_alerts=with_alerts,
+        irrigating=irrigating,
         system_alerts=system_alerts,
         fault_categories=cat_list,
         total_faults=total_faults,
+        projects_summary=list(proj_stats.values()),
         json=json,
         **_base_ctx()
     )

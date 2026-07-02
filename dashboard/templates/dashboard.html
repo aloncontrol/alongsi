@@ -2,20 +2,67 @@
 {% block title %}GSI Monitor - טיפול מיידי{% endblock %}
 
 {% block content %}
+<!-- Tab switcher -->
+<div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-dashboard" onclick="switchTab('dashboard')">📊 מצב כללי</button>
+    <button class="tab-btn" id="tab-btn-projects" onclick="switchTab('projects')">📋 פרויקטים</button>
+</div>
+
+<!-- Stats bar (always visible) -->
 <div class="stats-bar">
     <div class="stat-card">
         <div class="stat-value">{{ total }}</div>
         <div class="stat-label">סה"כ בקרים</div>
     </div>
-    <div class="stat-card stat-success">
-        <div class="stat-value">{{ connected }}</div>
-        <div class="stat-label">מחוברים</div>
+    <div class="stat-card stat-irrigating">
+        <div class="stat-value">{{ irrigating }}</div>
+        <div class="stat-label">💧 בהשקיה</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-value">{{ disconnected }}</div>
+        <div class="stat-label">📡 לא בתקשורת</div>
     </div>
     <div class="stat-card stat-warning">
         <div class="stat-value">{{ total_faults }}</div>
-        <div class="stat-label">בקרים עם תקלות</div>
+        <div class="stat-label">⚠️ בתקלות</div>
     </div>
 </div>
+
+<!-- Projects tab content -->
+<div id="tab-projects" style="display:none; margin-top:16px;">
+    <div class="projects-grid">
+        {% for p in projects_summary %}
+        <div class="project-card">
+            <div class="project-card-header">
+                <span class="project-icon">🌐</span>
+                <span class="project-name">{{ p.name }}</span>
+                <span class="project-id-badge">#{{ p.id }}</span>
+            </div>
+            <div class="project-stats-grid">
+                <div class="proj-stat">
+                    <div class="proj-stat-value">{{ p.total }}</div>
+                    <div class="proj-stat-label">סה"כ בקרים</div>
+                </div>
+                <div class="proj-stat proj-stat-blue">
+                    <div class="proj-stat-value">{{ p.irrigating }}</div>
+                    <div class="proj-stat-label">💧 בהשקיה</div>
+                </div>
+                <div class="proj-stat proj-stat-red">
+                    <div class="proj-stat-value">{{ p.disconnected }}</div>
+                    <div class="proj-stat-label">📡 לא בתקשורת</div>
+                </div>
+                <div class="proj-stat proj-stat-orange">
+                    <div class="proj-stat-value">{{ p.faults }}</div>
+                    <div class="proj-stat-label">⚠️ בתקלות</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Dashboard tab content -->
+<div id="tab-dashboard">
 
 {% if fault_categories %}
 <div class="fault-category-grid" style="margin-top: 16px;">
@@ -94,7 +141,7 @@
 </div>
 {% endif %}
 
-<div class="search-bar" style="margin-top: 20px;">
+<div class="search-bar" style="margin-top: 16px;">
     <input type="text" id="searchInput" placeholder="חיפוש בקר..." oninput="filterTable()">
     <select id="statusFilter" onchange="filterTable()">
         <option value="all">הכל</option>
@@ -183,10 +230,84 @@
         </tbody>
     </table>
 </div>
+</div>{# end tab-dashboard #}
 {% endblock %}
 
 {% block scripts %}
 <style>
+/* ── Tabs ── */
+.tab-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0;
+}
+.tab-btn {
+    padding: 8px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: -2px;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.2s;
+}
+.tab-btn:hover { background: #f5f5f5; color: #333; }
+.tab-btn.active { color: #2d6a2d; border-bottom-color: #2d6a2d; background: #f0f7f0; }
+
+/* ── Stats bar extra cards ── */
+.stat-card.stat-irrigating { background: linear-gradient(135deg,#e3f2fd,#bbdefb); border-top: 4px solid #1976d2; }
+.stat-card.stat-danger      { background: linear-gradient(135deg,#fce4ec,#f8bbd0); border-top: 4px solid #c62828; }
+
+/* ── Projects grid ── */
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+.project-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.project-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px 12px;
+    background: linear-gradient(135deg, #f0f7f0, #e8f5e9);
+    border-bottom: 1px solid #e0e0e0;
+}
+.project-icon { font-size: 1.4rem; }
+.project-name { font-size: 1.05rem; font-weight: 700; color: #1b5e20; flex: 1; }
+.project-id-badge {
+    background: #c8e6c9; color: #1b5e20;
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 0.78rem; font-weight: 600;
+}
+.project-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+}
+.proj-stat {
+    padding: 16px 8px;
+    text-align: center;
+    border-right: 1px solid #f0f0f0;
+}
+.proj-stat:last-child { border-right: none; }
+.proj-stat-value { font-size: 1.6rem; font-weight: 700; color: #333; }
+.proj-stat-label { font-size: 0.72rem; color: #777; margin-top: 2px; }
+.proj-stat-blue .proj-stat-value  { color: #1565c0; }
+.proj-stat-red .proj-stat-value   { color: #c62828; }
+.proj-stat-orange .proj-stat-value{ color: #e65100; }
+
 .btn-dismiss {
     padding: 3px 10px;
     background: #e8f5e9;
@@ -327,6 +448,12 @@ function toggleSection(header) {
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : '';
     arrow.textContent = isOpen ? '▶' : '▼';
+}
+function switchTab(tab) {
+    document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
+    document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
+    document.getElementById('tab-btn-dashboard').classList.toggle('active', tab === 'dashboard');
+    document.getElementById('tab-btn-projects').classList.toggle('active',  tab === 'projects');
 }
 function filterTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
