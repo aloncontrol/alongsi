@@ -11,19 +11,19 @@
 <!-- ═══ PROJECTS TAB (default) ═══ -->
 <div id="tab-projects" style="margin-top:14px;">
 
-    <!-- Project Selector -->
-    <div class="proj-selector" id="projSelector">
-        <button class="proj-chip proj-chip-active" data-pid="all" onclick="selectProject('all', this)">
-            🌐 כל הפרויקטים
-        </button>
+    <!-- Inner Project Tab Bar -->
+    <div class="proj-tab-bar" id="projTabBar">
         {% for p in projects_summary %}
-        <button class="proj-chip" data-pid="{{ p.id }}" onclick="selectProject('{{ p.id }}', this)">
+        <button class="proj-tab {% if loop.first %}proj-tab-active{% endif %}"
+                id="ptab-{{ p.id }}"
+                data-pid="{{ p.id }}"
+                onclick="selectProject('{{ p.id }}', this)">
             {{ p.name }}
-            <span class="proj-chip-badge">{{ p.total }}</span>
+            <span class="proj-tab-count">{{ p.total }}</span>
         </button>
         {% endfor %}
-        <button class="proj-chip proj-chip-add" onclick="openAddProject()">
-            ➕ הוסף פרויקט
+        <button class="proj-tab proj-tab-add" onclick="openAddProject()" title="הוסף פרויקט לניטור">
+            ➕
         </button>
     </div>
 
@@ -45,7 +45,7 @@
     </div>
 
     {% for p in projects_summary %}
-    <div class="scada-panel" data-pid="{{ p.id }}">
+    <div class="scada-panel" data-pid="{{ p.id }}" {% if not loop.first %}style="display:none"{% endif %}>
 
         <!-- SCADA Header -->
         <div class="scada-header">
@@ -587,57 +587,67 @@
     color: #fff;
 }
 
-/* ── Project Selector bar ── */
-.proj-selector {
+/* ── Inner Project Tab Bar ── */
+.proj-tab-bar {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px 2px 16px;
-    align-items: center;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 2px solid #1a3a25;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
 }
-.proj-chip {
+.proj-tab-bar::-webkit-scrollbar { display: none; }
+
+.proj-tab {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 16px;
-    background: #1a2f1e;
-    border: 1.5px solid #2a5235;
-    border-radius: 20px;
-    color: #8bc99a;
-    font-size: 0.85rem;
-    font-weight: 600;
+    gap: 8px;
+    padding: 10px 22px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
     cursor: pointer;
-    transition: all 0.15s;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #6aac7a;
     font-family: inherit;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
 }
-.proj-chip:hover {
-    background: #1f3e24;
-    border-color: #00c853;
-    color: #e8f5e9;
+.proj-tab:hover {
+    color: #c8e6c9;
+    background: rgba(0,200,83,0.06);
+    border-radius: 8px 8px 0 0;
 }
-.proj-chip-active {
-    background: #00c853;
-    border-color: #00e676;
-    color: #fff;
-    box-shadow: 0 0 10px rgba(0,200,83,0.35);
+.proj-tab-active {
+    color: #00e676 !important;
+    border-bottom-color: #00e676 !important;
+    background: rgba(0,230,118,0.08) !important;
+    border-radius: 8px 8px 0 0;
 }
-.proj-chip-badge {
-    background: rgba(255,255,255,0.2);
+.proj-tab-count {
+    background: rgba(0,230,118,0.15);
     border-radius: 10px;
     padding: 1px 8px;
     font-size: 0.75rem;
     font-weight: 700;
+    color: #00e676;
 }
-
-/* ── Add Project button variant ── */
-.proj-chip-add {
-    background: #0a1e12;
-    border-color: #00c853;
-    color: #00c853;
+.proj-tab-active .proj-tab-count {
+    background: rgba(0,230,118,0.3);
 }
-.proj-chip-add:hover {
-    background: #00c853;
-    color: #fff;
+.proj-tab-add {
+    margin-right: auto;
+    padding: 10px 16px;
+    color: #4aac6a;
+    font-size: 1rem;
+}
+.proj-tab-add:hover {
+    color: #00e676;
+    background: rgba(0,200,83,0.1) !important;
 }
 
 /* ── Modal ── */
@@ -1003,13 +1013,13 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') document.getElementById('addProjectModal').style.display = 'none';
 });
 
-function selectProject(pid, chipEl) {
-    // Update chip active state
-    document.querySelectorAll('.proj-chip').forEach(c => c.classList.remove('proj-chip-active'));
-    chipEl.classList.add('proj-chip-active');
-    // Show/hide panels
+function selectProject(pid, tabEl) {
+    // Update tab active state
+    document.querySelectorAll('.proj-tab').forEach(t => t.classList.remove('proj-tab-active'));
+    tabEl.classList.add('proj-tab-active');
+    // Show only the matching panel
     document.querySelectorAll('.scada-panel').forEach(panel => {
-        panel.style.display = (pid === 'all' || panel.dataset.pid === pid) ? '' : 'none';
+        panel.style.display = panel.dataset.pid === pid ? '' : 'none';
     });
 }
 
