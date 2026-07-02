@@ -1,15 +1,59 @@
 {% extends "sidebar_layout.html" %}
-{% block title %}GSI Monitor - טיפול מיידי{% endblock %}
+{% block title %}GSI Monitor - פרויקטים{% endblock %}
 
 {% block content %}
 <!-- Tab switcher -->
 <div class="tab-bar">
-    <button class="tab-btn active" id="tab-btn-dashboard" onclick="switchTab('dashboard')">📊 מצב כללי</button>
-    <button class="tab-btn" id="tab-btn-projects" onclick="switchTab('projects')">📋 פרויקטים</button>
+    <button class="tab-btn" id="tab-btn-dashboard" onclick="switchTab('dashboard')">📊 מצב כללי</button>
+    <button class="tab-btn active" id="tab-btn-projects" onclick="switchTab('projects')">📋 פרויקטים</button>
 </div>
 
-<!-- Stats bar (always visible) -->
-<div class="stats-bar">
+<!-- ═══ PROJECTS TAB (default) ═══ -->
+<div id="tab-projects" style="margin-top:14px;">
+    {% for p in projects_summary %}
+    <div class="project-panel">
+
+        <!-- Project header bar -->
+        <div class="project-panel-header">
+            <div class="project-panel-title">
+                <span class="project-panel-icon">🌐</span>
+                <span class="project-panel-name">{{ p.name }}</span>
+                <span class="project-panel-id">#{{ p.id }}</span>
+            </div>
+            <div class="project-total-badge">
+                <span class="project-total-num">{{ p.total }}</span>
+                <span class="project-total-lbl">סה"כ בקרים</span>
+            </div>
+        </div>
+
+        <!-- Three status cards -->
+        <div class="project-status-row">
+            <div class="pstat-card pstat-blue">
+                <div class="pstat-icon">💧</div>
+                <div class="pstat-value">{{ p.irrigating }}</div>
+                <div class="pstat-label">בהשקיה</div>
+            </div>
+            <div class="pstat-card pstat-red">
+                <div class="pstat-icon">📡</div>
+                <div class="pstat-value">{{ p.disconnected }}</div>
+                <div class="pstat-label">לא בתקשורת</div>
+            </div>
+            <div class="pstat-card pstat-orange">
+                <div class="pstat-icon">⚠️</div>
+                <div class="pstat-value">{{ p.faults }}</div>
+                <div class="pstat-label">בתקלות</div>
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ═══ DASHBOARD TAB ═══ -->
+<div id="tab-dashboard" style="display:none;">
+
+<!-- Compact stats bar -->
+<div class="stats-bar" style="margin-top:14px;">
     <div class="stat-card">
         <div class="stat-value">{{ total }}</div>
         <div class="stat-label">סה"כ בקרים</div>
@@ -27,42 +71,6 @@
         <div class="stat-label">⚠️ בתקלות</div>
     </div>
 </div>
-
-<!-- Projects tab content -->
-<div id="tab-projects" style="display:none; margin-top:16px;">
-    <div class="projects-grid">
-        {% for p in projects_summary %}
-        <div class="project-card">
-            <div class="project-card-header">
-                <span class="project-icon">🌐</span>
-                <span class="project-name">{{ p.name }}</span>
-                <span class="project-id-badge">#{{ p.id }}</span>
-            </div>
-            <div class="project-stats-grid">
-                <div class="proj-stat">
-                    <div class="proj-stat-value">{{ p.total }}</div>
-                    <div class="proj-stat-label">סה"כ בקרים</div>
-                </div>
-                <div class="proj-stat proj-stat-blue">
-                    <div class="proj-stat-value">{{ p.irrigating }}</div>
-                    <div class="proj-stat-label">💧 בהשקיה</div>
-                </div>
-                <div class="proj-stat proj-stat-red">
-                    <div class="proj-stat-value">{{ p.disconnected }}</div>
-                    <div class="proj-stat-label">📡 לא בתקשורת</div>
-                </div>
-                <div class="proj-stat proj-stat-orange">
-                    <div class="proj-stat-value">{{ p.faults }}</div>
-                    <div class="proj-stat-label">⚠️ בתקלות</div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<!-- Dashboard tab content -->
-<div id="tab-dashboard">
 
 {% if fault_categories %}
 <div class="fault-category-grid" style="margin-top: 16px;">
@@ -230,6 +238,7 @@
         </tbody>
     </table>
 </div>
+
 </div>{# end tab-dashboard #}
 {% endblock %}
 
@@ -238,75 +247,91 @@
 /* ── Tabs ── */
 .tab-bar {
     display: flex;
-    gap: 6px;
-    margin-bottom: 14px;
+    gap: 4px;
     border-bottom: 2px solid #e0e0e0;
-    padding-bottom: 0;
+    margin-bottom: 0;
 }
 .tab-btn {
-    padding: 8px 20px;
+    padding: 9px 22px;
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #666;
+    color: #888;
     margin-bottom: -2px;
     border-radius: 6px 6px 0 0;
-    transition: all 0.2s;
+    transition: all 0.15s;
 }
 .tab-btn:hover { background: #f5f5f5; color: #333; }
-.tab-btn.active { color: #2d6a2d; border-bottom-color: #2d6a2d; background: #f0f7f0; }
+.tab-btn.active { color: #1b5e20; border-bottom-color: #2d6a2d; background: #f0f7f0; }
 
-/* ── Stats bar extra cards ── */
-.stat-card.stat-irrigating { background: linear-gradient(135deg,#e3f2fd,#bbdefb); border-top: 4px solid #1976d2; }
-.stat-card.stat-danger      { background: linear-gradient(135deg,#fce4ec,#f8bbd0); border-top: 4px solid #c62828; }
-
-/* ── Projects grid ── */
-.projects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-}
-.project-card {
+/* ── Project Panel ── */
+.project-panel {
     background: #fff;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid #e0e0e0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
     overflow: hidden;
+    margin-bottom: 18px;
 }
-.project-card-header {
+.project-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+    color: #fff;
+}
+.project-panel-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 16px 18px 12px;
-    background: linear-gradient(135deg, #f0f7f0, #e8f5e9);
-    border-bottom: 1px solid #e0e0e0;
 }
-.project-icon { font-size: 1.4rem; }
-.project-name { font-size: 1.05rem; font-weight: 700; color: #1b5e20; flex: 1; }
-.project-id-badge {
-    background: #c8e6c9; color: #1b5e20;
-    padding: 2px 8px; border-radius: 10px;
-    font-size: 0.78rem; font-weight: 600;
+.project-panel-icon { font-size: 1.5rem; }
+.project-panel-name { font-size: 1.2rem; font-weight: 700; }
+.project-panel-id {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
 }
-.project-stats-grid {
+.project-total-badge {
+    text-align: center;
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 20px;
+}
+.project-total-num { display: block; font-size: 2rem; font-weight: 800; line-height: 1; }
+.project-total-lbl { font-size: 0.75rem; opacity: 0.85; }
+
+/* ── Three status cards ── */
+.project-status-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0;
+    grid-template-columns: repeat(3, 1fr);
 }
-.proj-stat {
-    padding: 16px 8px;
+.pstat-card {
+    padding: 22px 16px;
     text-align: center;
     border-right: 1px solid #f0f0f0;
+    transition: background 0.15s;
 }
-.proj-stat:last-child { border-right: none; }
-.proj-stat-value { font-size: 1.6rem; font-weight: 700; color: #333; }
-.proj-stat-label { font-size: 0.72rem; color: #777; margin-top: 2px; }
-.proj-stat-blue .proj-stat-value  { color: #1565c0; }
-.proj-stat-red .proj-stat-value   { color: #c62828; }
-.proj-stat-orange .proj-stat-value{ color: #e65100; }
+.pstat-card:last-child { border-right: none; }
+.pstat-icon  { font-size: 1.6rem; margin-bottom: 6px; }
+.pstat-value { font-size: 2.2rem; font-weight: 800; line-height: 1; }
+.pstat-label { font-size: 0.8rem; color: #666; margin-top: 4px; font-weight: 600; }
+.pstat-blue  { background: #f0f7ff; }
+.pstat-blue .pstat-value  { color: #1565c0; }
+.pstat-red   { background: #fff5f5; }
+.pstat-red .pstat-value   { color: #c62828; }
+.pstat-orange{ background: #fff8f0; }
+.pstat-orange .pstat-value{ color: #e65100; }
+
+/* ── Stats bar extra ── */
+.stat-card.stat-irrigating { background: linear-gradient(135deg,#e3f2fd,#bbdefb); border-top: 4px solid #1976d2; }
+.stat-card.stat-danger      { background: linear-gradient(135deg,#fce4ec,#f8bbd0); border-top: 4px solid #c62828; }
 
 .btn-dismiss {
     padding: 3px 10px;
@@ -379,28 +404,18 @@
 </div>
 
 <script>
-// ── Auto-refresh countdown ──────────────────────────────────────
-const REFRESH_SECONDS = 300; // 5 minutes
+const REFRESH_SECONDS = 300;
 let secondsLeft = REFRESH_SECONDS;
 let refreshTimer;
 
 function doRefresh() {
-    // Don't reload if user is actively searching
     const searchVal = document.getElementById('searchInput')?.value || '';
-    if (searchVal.trim()) {
-        // Just reset the timer instead
-        secondsLeft = REFRESH_SECONDS;
-        return;
-    }
+    if (searchVal.trim()) { secondsLeft = REFRESH_SECONDS; return; }
     location.reload();
 }
-
 function updateRefreshBar() {
     secondsLeft--;
-    if (secondsLeft <= 0) {
-        doRefresh();
-        return;
-    }
+    if (secondsLeft <= 0) { doRefresh(); return; }
     const mins = Math.floor(secondsLeft / 60);
     const secs = String(secondsLeft % 60).padStart(2, '0');
     const label = document.getElementById('refresh-label');
@@ -408,10 +423,8 @@ function updateRefreshBar() {
     if (label) label.textContent = `מתרענן בעוד ${mins}:${secs}`;
     if (fill)  fill.style.width = ((secondsLeft / REFRESH_SECONDS) * 100) + '%';
 }
-
 refreshTimer = setInterval(updateRefreshBar, 1000);
 
-// Pause refresh while user is typing in search
 document.addEventListener('DOMContentLoaded', () => {
     const si = document.getElementById('searchInput');
     if (si) {
@@ -425,6 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
+function switchTab(tab) {
+    document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
+    document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
+    document.getElementById('tab-btn-dashboard').classList.toggle('active', tab === 'dashboard');
+    document.getElementById('tab-btn-projects').classList.toggle('active',  tab === 'projects');
+}
 function dismissFault(unitId, btn) {
     btn.disabled = true;
     btn.textContent = '...';
@@ -448,12 +467,6 @@ function toggleSection(header) {
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : '';
     arrow.textContent = isOpen ? '▶' : '▼';
-}
-function switchTab(tab) {
-    document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
-    document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
-    document.getElementById('tab-btn-dashboard').classList.toggle('active', tab === 'dashboard');
-    document.getElementById('tab-btn-projects').classList.toggle('active',  tab === 'projects');
 }
 function filterTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
