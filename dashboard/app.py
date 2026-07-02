@@ -233,6 +233,16 @@ def index():
         if d.get("primary_alert_category") and d["connection_status"] == 1:
             st["faults"] += 1
 
+    projects_list = list(proj_stats.values())
+
+    # Active project: from ?pid= param, or first in list
+    try:
+        active_pid = int(request.args.get("pid", 0))
+    except (ValueError, TypeError):
+        active_pid = 0
+    if active_pid not in proj_stats:
+        active_pid = projects_list[0]["id"] if projects_list else 0
+
     return render_template("dashboard.html",
         active_page="dashboard",
         snapshots=enriched,
@@ -242,7 +252,8 @@ def index():
         system_alerts=system_alerts,
         fault_categories=cat_list,
         total_faults=total_faults,
-        projects_summary=list(proj_stats.values()),
+        projects_summary=projects_list,
+        active_pid=active_pid,
         json=json,
         **_base_ctx()
     )

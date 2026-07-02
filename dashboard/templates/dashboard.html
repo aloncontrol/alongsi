@@ -14,13 +14,11 @@
     <!-- Inner Project Tab Bar -->
     <div class="proj-tab-bar" id="projTabBar">
         {% for p in projects_summary %}
-        <button class="proj-tab {% if loop.first %}proj-tab-active{% endif %}"
-                id="ptab-{{ p.id }}"
-                data-pid="{{ p.id }}"
-                onclick="selectProject('{{ p.id }}', this)">
+        <a class="proj-tab {% if p.id == active_pid %}proj-tab-active{% endif %}"
+           href="/?pid={{ p.id }}#tab-projects">
             {{ p.name }}
             <span class="proj-tab-count">{{ p.total }}</span>
-        </button>
+        </a>
         {% endfor %}
         <button class="proj-tab proj-tab-add" id="btnAddProj" onclick="toggleAddProject()" title="הוסף פרויקט לניטור">
             ➕ הוסף פרויקט
@@ -37,7 +35,8 @@
     </div>
 
     {% for p in projects_summary %}
-    <div class="scada-panel" data-pid="{{ p.id }}" {% if not loop.first %}style="display:none"{% endif %}>
+    {% if p.id == active_pid %}
+    <div class="scada-panel" data-pid="{{ p.id }}">
 
         <!-- SCADA Header -->
         <div class="scada-header">
@@ -141,6 +140,7 @@
         </div>
 
     </div>
+    {% endif %}
     {% endfor %}
 </div>
 
@@ -608,6 +608,7 @@
     white-space: nowrap;
     transition: all 0.15s;
     flex-shrink: 0;
+    text-decoration: none;
 }
 .proj-tab:hover {
     color: #c8e6c9;
@@ -956,8 +957,8 @@ function addProject(pid, name, btn) {
             btn.textContent = '✓ נוסף';
             btn.style.background = '#1e4d30';
             _monitoredIds.add(pid);
-            // Reload page after a moment to show the new project panel
-            setTimeout(() => { location.reload(); }, 1200);
+            // Navigate to the new project after a moment
+            setTimeout(() => { window.location.href = '/?pid=' + pid; }, 1200);
         } else {
             btn.disabled = false;
             btn.textContent = '+ הוסף';
@@ -975,15 +976,6 @@ document.addEventListener('keydown', e => {
     }
 });
 
-function selectProject(pid, tabEl) {
-    // Update tab active state
-    document.querySelectorAll('.proj-tab').forEach(t => t.classList.remove('proj-tab-active'));
-    tabEl.classList.add('proj-tab-active');
-    // Show only the matching panel
-    document.querySelectorAll('.scada-panel').forEach(panel => {
-        panel.style.display = panel.dataset.pid === pid ? '' : 'none';
-    });
-}
 
 function switchTab(tab) {
     document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
