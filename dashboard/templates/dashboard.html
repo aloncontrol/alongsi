@@ -20,22 +20,37 @@
             <span class="proj-tab-count">{{ p.total }}</span>
         </a>
         {% endfor %}
-        <button class="proj-tab proj-tab-add" id="btnAddProj" onclick="toggleAddProject()" title="הוסף פרויקט לניטור">
-            ➕ הוסף פרויקט
-        </button>
-    </div>
-
-    <!-- Inline Add-Project Panel -->
-    <div id="addProjectPanel" class="add-proj-panel" style="display:none;">
-        <input type="text" id="projSearch" placeholder="🔍  חיפוש לפי שם פרויקט או מספר..."
-               oninput="filterProjects()" class="proj-search-input"
-               autocomplete="off" autocorrect="off" spellcheck="false">
-        <div id="projListStatus" class="proj-list-status">⏳ טוען רשימת פרויקטים...</div>
-        <div id="projList" class="proj-list" style="display:none;"></div>
     </div>
 
     {% for p in projects_summary %}
     {% if p.id == active_pid %}
+    {% if p.total == 0 %}
+    <!-- Project exists in GSI but no data collected yet -->
+    <div class="scada-panel" data-pid="{{ p.id }}">
+        <div class="scada-header">
+            <div class="scada-header-right">
+                <div class="scada-project-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="scada-project-name">{{ p.name }}</div>
+                    <div class="scada-project-sub">Project ID: {{ p.id }} &nbsp;|&nbsp; GSI Galcon Smart</div>
+                </div>
+            </div>
+        </div>
+        <div style="text-align:center;padding:48px 24px;color:#6aac7a;">
+            <div style="font-size:2.5rem;margin-bottom:12px;">📡</div>
+            <div style="font-size:1rem;font-weight:600;color:#c8e6c9;margin-bottom:8px;">אין נתונים עדיין לפרויקט זה</div>
+            <div style="font-size:0.85rem;margin-bottom:20px;">הנתונים יאספו בציקל הבא (כל 15 דקות)</div>
+            <button onclick="triggerCollect({{ p.id }}, this)"
+                    style="background:#00c853;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.9rem;font-weight:700;cursor:pointer;">
+                ▶ אסוף נתונים עכשיו
+            </button>
+        </div>
+    </div>
+    {% else %}
     <div class="scada-panel" data-pid="{{ p.id }}">
 
         <!-- SCADA Header -->
@@ -140,7 +155,8 @@
         </div>
 
     </div>
-    {% endif %}
+    {% endif %}{# end if p.total == 0 #}
+    {% endif %}{# end if p.id == active_pid #}
     {% endfor %}
 </div>
 
@@ -632,33 +648,7 @@
 .proj-tab-active .proj-tab-count {
     background: rgba(0,230,118,0.3);
 }
-.proj-tab-add {
-    margin-right: auto;
-    padding: 10px 16px;
-    color: #4aac6a;
-    font-size: 1rem;
-}
-.proj-tab-add:hover {
-    color: #00e676;
-    background: rgba(0,200,83,0.1) !important;
-}
 
-/* ── Inline Add-Project Panel ── */
-.add-proj-panel {
-    background: #0a1a10;
-    border: 1px solid #1e4d30;
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    animation: slideDown 0.18s ease;
-}
-@keyframes slideDown {
-    from { opacity:0; transform: translateY(-8px); }
-    to   { opacity:1; transform: translateY(0); }
-}
 .proj-search-input {
     width: 100%;
     padding: 10px 14px;
@@ -861,121 +851,28 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
-/* ── Add-Project modal ── */
-let _allGsiProjects = null;   // cached project list from GSI API
-const _monitoredIds = new Set([{% for p in projects_summary %}{{ p.id }},{% endfor %}]);
 
-function toggleAddProject() {
-    const panel = document.getElementById('addProjectPanel');
-    const btn   = document.getElementById('btnAddProj');
-    const open  = panel.style.display !== 'none';
-    if (open) {
-        panel.style.display = 'none';
-        btn.classList.remove('proj-tab-active');
-        return;
-    }
-    panel.style.display = '';
-    btn.classList.add('proj-tab-active');
-    document.getElementById('projSearch').value = '';
-    document.getElementById('projList').style.display = 'none';
-    document.getElementById('projListStatus').textContent = '⏳ טוען רשימת פרויקטים...';
-    document.getElementById('projListStatus').style.display = '';
-    setTimeout(() => document.getElementById('projSearch').focus(), 50);
 
-    if (_allGsiProjects) { renderProjectList(_allGsiProjects); return; }
-    fetch('/api/gsi/projects')
-        .then(r => r.json())
-        .then(data => {
-            if (!data.ok) throw new Error(data.error || 'שגיאה');
-            _allGsiProjects = data.projects;
-            renderProjectList(_allGsiProjects);
-        })
-        .catch(err => {
-            document.getElementById('projListStatus').textContent = '❌ שגיאה: ' + err.message;
-        });
-}
-
-function filterProjects() {
-    if (!_allGsiProjects) return;
-    const q = document.getElementById('projSearch').value.toLowerCase();
-    const filtered = q
-        ? _allGsiProjects.filter(p => p.project_name.toLowerCase().includes(q) ||
-                                      String(p.project_id).includes(q))
-        : _allGsiProjects;
-    renderProjectList(filtered);
-}
-
-function renderProjectList(projects) {
-    const list = document.getElementById('projList');
-    const status = document.getElementById('projListStatus');
-    list.innerHTML = '';
-
-    const q = document.getElementById('projSearch').value.toLowerCase();
-    const filtered = q
-        ? projects.filter(p => p.project_name.toLowerCase().includes(q) ||
-                               String(p.project_id).includes(q))
-        : projects;
-
-    if (filtered.length === 0) {
-        status.textContent = 'לא נמצאו פרויקטים';
-        status.style.display = '';
-        list.style.display = 'none';
-        return;
-    }
-
-    status.style.display = 'none';
-    list.style.display = '';
-
-    filtered.forEach(p => {
-        const isAdded = _monitoredIds.has(p.project_id);
-        const item = document.createElement('div');
-        item.className = 'proj-item' + (isAdded ? ' already-added' : '');
-        item.innerHTML = `
-            <div>
-                <div class="proj-item-name">${p.project_name}</div>
-                <div class="proj-item-id">#${p.project_id}</div>
-            </div>
-            ${isAdded
-                ? '<span class="proj-item-badge-added">✓ מנוטר</span>'
-                : `<button class="proj-item-add" onclick="addProject(${p.project_id}, '${p.project_name.replace(/'/g,"\\'")}', this)">+ הוסף</button>`
-            }`;
-        list.appendChild(item);
-    });
-}
-
-function addProject(pid, name, btn) {
+function triggerCollect(pid, btn) {
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.textContent = '⏳ אוסף נתונים...';
     fetch('/api/project/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_id: pid, project_name: name })
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({project_id: pid, project_name: ''})
     })
     .then(r => r.json())
-    .then(data => {
-        if (data.ok) {
-            btn.textContent = '✓ נוסף';
-            btn.style.background = '#1e4d30';
-            _monitoredIds.add(pid);
-            // Navigate to the new project after a moment
-            setTimeout(() => { window.location.href = '/?pid=' + pid; }, 1200);
+    .then(d => {
+        if (d.ok) {
+            btn.textContent = '✓ האיסוף החל — מרענן...';
+            setTimeout(() => location.reload(), 3000);
         } else {
             btn.disabled = false;
-            btn.textContent = '+ הוסף';
-            alert('שגיאה: ' + (data.error || 'לא ידוע'));
+            btn.textContent = '▶ אסוף נתונים עכשיו';
         }
     })
-    .catch(() => { btn.disabled = false; btn.textContent = '+ הוסף'; });
+    .catch(() => { btn.disabled = false; btn.textContent = '▶ אסוף נתונים עכשיו'; });
 }
-
-// Close add-project panel on Escape
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-        const panel = document.getElementById('addProjectPanel');
-        if (panel && panel.style.display !== 'none') toggleAddProject();
-    }
-});
-
 
 function switchTab(tab) {
     document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';

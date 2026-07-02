@@ -233,15 +233,26 @@ def index():
         if d.get("primary_alert_category") and d["connection_status"] == 1:
             st["faults"] += 1
 
-    projects_list = list(proj_stats.values())
+    # Build full project list for tab bar:
+    # start with all projects in DB (auto-synced from GSI), then
+    # enrich with live stats where we have data.
+    all_db_projects = {p["project_id"]: p["project_name"] for p in all_projects}
+    for pid, name in all_db_projects.items():
+        if pid not in proj_stats:
+            proj_stats[pid] = {"id": pid, "name": name,
+                               "total": 0, "irrigating": 0,
+                               "disconnected": 0, "faults": 0}
 
-    # Active project: from ?pid= param, or first in list
+    projects_list = sorted(proj_stats.values(), key=lambda p: p["name"])
+
+    # Active project: from ?pid= param, or first project with data, or first overall
     try:
         active_pid = int(request.args.get("pid", 0))
     except (ValueError, TypeError):
         active_pid = 0
     if active_pid not in proj_stats:
-        active_pid = projects_list[0]["id"] if projects_list else 0
+        first_with_data = next((p["id"] for p in projects_list if p["total"] > 0), None)
+        active_pid = first_with_data or (projects_list[0]["id"] if projects_list else 0)
 
     return render_template("dashboard.html",
         active_page="dashboard",

@@ -211,27 +211,64 @@ def run_battery_collection():
     logger.info(f"Battery collection complete: {ok_total} OK, {err_total} errors")
 
 
+def sync_projects_from_gsi():
+    """Fetch the full project list from GSI and upsert names into the DB.
+
+    This is metadata-only (no unit data collected). It keeps the projects
+    table up-to-date with whatever the GSI user account has access to.
+    Returns the list of project dicts [{project_id, project_name}, ...].
+    """
+    try:
+        from gsi_client import GSIClient
+        from database import upsert_project
+        client = GSIClient()
+        projects = client.get_user_projects()
+        if projects:
+            conn = get_db()
+            for p in projects:
+                upsert_project(conn, p["project_id"], p["project_name"])
+            conn.close()
+            logger.info(f"sync_projects_from_gsi: synced {len(projects)} projects to DB")
+        return projects
+    except Exception as e:
+        logger.warning(f"sync_projects_from_gsi failed: {e}")
+        return []
+
+
 def run_collection():
     """Entry point for scheduled collection.
 
-    Collects data for every project that is:
-    - Listed in GSI_PROJECT_IDS (config), OR
-    - Present in the 'projects' DB table (dynamically added via the dashboard).
+    1. Syncs project list from GSI to DB (metadata / names only — fast).
+    2. Collects unit data only for projects that are actively monitored:
+       - projects in GSI_PROJECT_IDS (config), OR
+       - projects in DB that have at least one unit already collected
+         (i.e. the user has explicitly triggered a collection for them before).
+
+    This avoids attempting to collect all thousands of projects that may
+    exist in a GSI admin account.
     """
     from config import GSI_PROJECT_IDS
-    project_ids = set(GSI_PROJECT_IDS)
 
-    # Merge in any projects saved to the DB
+    # Step 1: sync project names from GSI → DB (metadata only)
+    sync_projects_from_gsi()
+
+    # Step 2: determine which projects to actively collect
+    monitored = set(GSI_PROJECT_IDS)
+
+    # Add any project that already has unit data in the DB
     try:
         conn = get_db()
-        rows = conn.execute("SELECT project_id FROM projects").fetchall()
+        rows = conn.execute(
+            "SELECT DISTINCT project_id FROM units WHERE project_id IS NOT NULL"
+        ).fetchall()
         conn.close()
         for r in rows:
-            project_ids.add(r["project_id"])
+            monitored.add(r["project_id"])
     except Exception as e:
-        logger.warning(f"Could not read projects from DB: {e}")
+        logger.warning(f"Could not read active projects from DB: {e}")
 
-    for project_id in sorted(project_ids):
+    logger.info(f"run_collection: collecting {len(monitored)} monitored projects")
+    for project_id in sorted(monitored):
         collector = DataCollector(project_id=project_id)
         collector.collect_all()
 
