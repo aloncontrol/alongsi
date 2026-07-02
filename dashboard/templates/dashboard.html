@@ -22,26 +22,18 @@
             <span class="proj-tab-count">{{ p.total }}</span>
         </button>
         {% endfor %}
-        <button class="proj-tab proj-tab-add" onclick="openAddProject()" title="הוסף פרויקט לניטור">
-            ➕
+        <button class="proj-tab proj-tab-add" id="btnAddProj" onclick="toggleAddProject()" title="הוסף פרויקט לניטור">
+            ➕ הוסף פרויקט
         </button>
     </div>
 
-    <!-- Add Project Modal -->
-    <div id="addProjectModal" class="modal-backdrop" onclick="closeAddProject(event)">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <span>➕ הוסף פרויקט לניטור</span>
-                <button class="modal-close" onclick="closeAddProject()">✕</button>
-            </div>
-            <div class="modal-body">
-                <input type="text" id="projSearch" placeholder="חיפוש לפי שם פרויקט..."
-                       oninput="filterProjects()" class="proj-search-input"
-                       autocomplete="off" autocorrect="off" spellcheck="false">
-                <div id="projListStatus" class="proj-list-status">⏳ טוען רשימת פרויקטים...</div>
-                <div id="projList" class="proj-list" style="display:none;"></div>
-            </div>
-        </div>
+    <!-- Inline Add-Project Panel -->
+    <div id="addProjectPanel" class="add-proj-panel" style="display:none;">
+        <input type="text" id="projSearch" placeholder="🔍  חיפוש לפי שם פרויקט או מספר..."
+               oninput="filterProjects()" class="proj-search-input"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+        <div id="projListStatus" class="proj-list-status">⏳ טוען רשימת פרויקטים...</div>
+        <div id="projList" class="proj-list" style="display:none;"></div>
     </div>
 
     {% for p in projects_summary %}
@@ -650,57 +642,21 @@
     background: rgba(0,200,83,0.1) !important;
 }
 
-/* ── Modal ── */
-.modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.72);
-    z-index: 9000;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-}
-.modal-backdrop.open {
-    display: flex;
-}
-.modal-box {
-    background: #0d1f16;
-    border: 1px solid #1e4d30;
-    border-radius: 16px;
-    width: min(520px, 94vw);
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.7);
-    overflow: hidden;
-}
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
+/* ── Inline Add-Project Panel ── */
+.add-proj-panel {
     background: #0a1a10;
-    border-bottom: 1px solid #1a3a25;
-    font-weight: 700;
-    font-size: 1rem;
-    color: #e8f5e9;
-}
-.modal-close {
-    background: none;
-    border: none;
-    color: #6aac7a;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 2px 8px;
-    border-radius: 6px;
-}
-.modal-close:hover { background: #1a3a25; color: #fff; }
-.modal-body {
-    padding: 16px;
-    overflow-y: auto;
+    border: 1px solid #1e4d30;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    animation: slideDown 0.18s ease;
+}
+@keyframes slideDown {
+    from { opacity:0; transform: translateY(-8px); }
+    to   { opacity:1; transform: translateY(0); }
 }
 .proj-search-input {
     width: 100%;
@@ -908,18 +864,24 @@ document.addEventListener('DOMContentLoaded', () => {
 let _allGsiProjects = null;   // cached project list from GSI API
 const _monitoredIds = new Set([{% for p in projects_summary %}{{ p.id }},{% endfor %}]);
 
-function openAddProject() {
-    document.getElementById('addProjectModal').classList.add('open');
+function toggleAddProject() {
+    const panel = document.getElementById('addProjectPanel');
+    const btn   = document.getElementById('btnAddProj');
+    const open  = panel.style.display !== 'none';
+    if (open) {
+        panel.style.display = 'none';
+        btn.classList.remove('proj-tab-active');
+        return;
+    }
+    panel.style.display = '';
+    btn.classList.add('proj-tab-active');
     document.getElementById('projSearch').value = '';
     document.getElementById('projList').style.display = 'none';
     document.getElementById('projListStatus').textContent = '⏳ טוען רשימת פרויקטים...';
     document.getElementById('projListStatus').style.display = '';
-    document.getElementById('projSearch').focus();
+    setTimeout(() => document.getElementById('projSearch').focus(), 50);
 
-    if (_allGsiProjects) {
-        renderProjectList(_allGsiProjects);
-        return;
-    }
+    if (_allGsiProjects) { renderProjectList(_allGsiProjects); return; }
     fetch('/api/gsi/projects')
         .then(r => r.json())
         .then(data => {
@@ -928,13 +890,8 @@ function openAddProject() {
             renderProjectList(_allGsiProjects);
         })
         .catch(err => {
-            document.getElementById('projListStatus').textContent = '❌ שגיאה בטעינת פרויקטים: ' + err.message;
+            document.getElementById('projListStatus').textContent = '❌ שגיאה: ' + err.message;
         });
-}
-
-function closeAddProject(evt) {
-    if (evt && evt.target !== document.getElementById('addProjectModal')) return;
-    document.getElementById('addProjectModal').classList.remove('open');
 }
 
 function filterProjects() {
@@ -1010,9 +967,12 @@ function addProject(pid, name, btn) {
     .catch(() => { btn.disabled = false; btn.textContent = '+ הוסף'; });
 }
 
-// Close modal on Escape
+// Close add-project panel on Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('addProjectModal').classList.remove('open');
+    if (e.key === 'Escape') {
+        const panel = document.getElementById('addProjectPanel');
+        if (panel && panel.style.display !== 'none') toggleAddProject();
+    }
 });
 
 function selectProject(pid, tabEl) {
