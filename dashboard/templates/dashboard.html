@@ -10,39 +10,122 @@
 
 <!-- ═══ PROJECTS TAB (default) ═══ -->
 <div id="tab-projects" style="margin-top:14px;">
-    {% for p in projects_summary %}
-    <div class="project-panel">
 
-        <!-- Project header bar -->
-        <div class="project-panel-header">
-            <div class="project-panel-title">
-                <span class="project-panel-icon">🌐</span>
-                <span class="project-panel-name">{{ p.name }}</span>
-                <span class="project-panel-id">#{{ p.id }}</span>
+    <!-- Project Selector -->
+    <div class="proj-selector" id="projSelector">
+        <button class="proj-chip proj-chip-active" data-pid="all" onclick="selectProject('all', this)">
+            🌐 כל הפרויקטים
+        </button>
+        {% for p in projects_summary %}
+        <button class="proj-chip" data-pid="{{ p.id }}" onclick="selectProject('{{ p.id }}', this)">
+            {{ p.name }}
+            <span class="proj-chip-badge">{{ p.total }}</span>
+        </button>
+        {% endfor %}
+    </div>
+
+    {% for p in projects_summary %}
+    <div class="scada-panel" data-pid="{{ p.id }}">
+
+        <!-- SCADA Header -->
+        <div class="scada-header">
+            <div class="scada-header-right">
+                <div class="scada-project-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="scada-project-name">{{ p.name }}</div>
+                    <div class="scada-project-sub">Project ID: {{ p.id }} &nbsp;|&nbsp; GSI Galcon Smart</div>
+                </div>
             </div>
-            <div class="project-total-badge">
-                <span class="project-total-num">{{ p.total }}</span>
-                <span class="project-total-lbl">סה"כ בקרים</span>
+            <div class="scada-live-badge">
+                <span class="scada-live-dot"></span> LIVE
             </div>
         </div>
 
-        <!-- Three status cards -->
-        <div class="project-status-row">
-            <div class="pstat-card pstat-blue">
-                <div class="pstat-icon">💧</div>
-                <div class="pstat-value">{{ p.irrigating }}</div>
-                <div class="pstat-label">בהשקיה</div>
+        <!-- 4 Circular Gauges -->
+        <div class="scada-gauges">
+
+            <!-- Total -->
+            <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#1e3a2f" stroke-width="10"/>
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#00e676" stroke-width="10"
+                        stroke-dasharray="301 1" stroke-linecap="round"
+                        transform="rotate(-90 60 60)"/>
+                    <text x="60" y="54" text-anchor="middle" class="gauge-num">{{ p.total }}</text>
+                    <text x="60" y="72" text-anchor="middle" class="gauge-sub">יחידות</text>
+                </svg>
+                <div class="gauge-label">סה"כ בקרים</div>
             </div>
-            <div class="pstat-card pstat-red">
-                <div class="pstat-icon">📡</div>
-                <div class="pstat-value">{{ p.disconnected }}</div>
-                <div class="pstat-label">לא בתקשורת</div>
+
+            <!-- Irrigating -->
+            {% set irr_pct = (p.irrigating / p.total * 301)|int if p.total > 0 else 0 %}
+            <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#0d2b4a" stroke-width="10"/>
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#29b6f6" stroke-width="10"
+                        stroke-dasharray="{{ irr_pct }} 302" stroke-linecap="round"
+                        transform="rotate(-90 60 60)"/>
+                    <text x="60" y="54" text-anchor="middle" class="gauge-num gauge-blue">{{ p.irrigating }}</text>
+                    <text x="60" y="72" text-anchor="middle" class="gauge-sub">יחידות</text>
+                </svg>
+                <div class="gauge-label">💧 בהשקיה</div>
             </div>
-            <div class="pstat-card pstat-orange">
-                <div class="pstat-icon">⚠️</div>
-                <div class="pstat-value">{{ p.faults }}</div>
-                <div class="pstat-label">בתקלות</div>
+
+            <!-- Disconnected -->
+            {% set disc_pct = (p.disconnected / p.total * 301)|int if p.total > 0 else 0 %}
+            <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#3a1a1a" stroke-width="10"/>
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#ef5350" stroke-width="10"
+                        stroke-dasharray="{{ disc_pct }} 302" stroke-linecap="round"
+                        transform="rotate(-90 60 60)"/>
+                    <text x="60" y="54" text-anchor="middle" class="gauge-num gauge-red">{{ p.disconnected }}</text>
+                    <text x="60" y="72" text-anchor="middle" class="gauge-sub">יחידות</text>
+                </svg>
+                <div class="gauge-label">📡 לא בתקשורת</div>
             </div>
+
+            <!-- Faults -->
+            {% set fault_pct = (p.faults / p.total * 301)|int if p.total > 0 else 0 %}
+            <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#3a2800" stroke-width="10"/>
+                    <circle cx="60" cy="60" r="48" fill="none" stroke="#ffa726" stroke-width="10"
+                        stroke-dasharray="{{ fault_pct }} 302" stroke-linecap="round"
+                        transform="rotate(-90 60 60)"/>
+                    <text x="60" y="54" text-anchor="middle" class="gauge-num gauge-orange">{{ p.faults }}</text>
+                    <text x="60" y="72" text-anchor="middle" class="gauge-sub">יחידות</text>
+                </svg>
+                <div class="gauge-label">⚠️ בתקלות</div>
+            </div>
+
+        </div>
+
+        <!-- Unit Status Grid -->
+        <div class="scada-units-header">
+            <span>מצב בקרים</span>
+            <span class="scada-legend">
+                <span class="leg leg-ok"></span>תקין
+                <span class="leg leg-irr"></span>השקיה
+                <span class="leg leg-fault"></span>תקלה
+                <span class="leg leg-disc"></span>מנותק
+            </span>
+        </div>
+        <div class="scada-unit-grid">
+            {% for s in snapshots if s.get('project_id') == p.id or projects_summary|length == 1 %}
+            {% set uclass = 'uc-disc' if s.connection_status != 1 else ('uc-irr' if (s.output_state or 0) > 0 else ('uc-fault' if s.primary_alert_category else 'uc-ok')) %}
+            <div class="unit-circle {{ uclass }}" onclick="window.location='/unit/{{ s.control_unit_id }}'"
+                 title="{{ s.unit_name }}{% if s.primary_alert_name %} — {{ s.primary_alert_name }}{% endif %}">
+                <div class="uc-name">{{ s.unit_name | truncate(12, true, '') }}</div>
+                <div class="uc-status">
+                    {% if s.connection_status != 1 %}⛔{% elif (s.output_state or 0) > 0 %}💧{% elif s.primary_alert_category %}⚠{% else %}✓{% endif %}
+                </div>
+            </div>
+            {% endfor %}
         </div>
 
     </div>
@@ -267,67 +350,276 @@
 .tab-btn:hover { background: #f5f5f5; color: #333; }
 .tab-btn.active { color: #1b5e20; border-bottom-color: #2d6a2d; background: #f0f7f0; }
 
-/* ── Project Panel ── */
-.project-panel {
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+/* ══════════════════════════════════════════
+   SCADA Panel — Professional Dashboard
+   ══════════════════════════════════════════ */
+.scada-panel {
+    background: #0d1f16;
+    border-radius: 16px;
+    border: 1px solid #1e4d30;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.45);
     overflow: hidden;
-    margin-bottom: 18px;
+    margin-bottom: 22px;
 }
-.project-panel-header {
+
+/* Header */
+.scada-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 22px;
-    background: linear-gradient(135deg, #1b5e20, #2e7d32);
-    color: #fff;
+    padding: 16px 22px;
+    background: linear-gradient(135deg, #0a1e12 0%, #12382a 100%);
+    border-bottom: 1px solid #1e4d30;
 }
-.project-panel-title {
+.scada-header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
 }
-.project-panel-icon { font-size: 1.5rem; }
-.project-panel-name { font-size: 1.2rem; font-weight: 700; }
-.project-panel-id {
-    background: rgba(255,255,255,0.2);
-    padding: 2px 10px;
+.scada-project-icon {
+    width: 44px; height: 44px;
+    background: rgba(0,230,118,0.12);
+    border: 1.5px solid rgba(0,230,118,0.4);
     border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: #00e676;
+    flex-shrink: 0;
+}
+.scada-project-icon svg { width: 22px; height: 22px; }
+.scada-project-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #e8f5e9;
+    letter-spacing: 0.3px;
+}
+.scada-project-sub {
+    font-size: 0.75rem;
+    color: #6aac7a;
+    margin-top: 2px;
+    font-family: 'Courier New', monospace;
+}
+.scada-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,230,118,0.1);
+    border: 1px solid rgba(0,230,118,0.35);
+    border-radius: 20px;
+    padding: 5px 14px;
+    color: #00e676;
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 1px;
 }
-.project-total-badge {
-    text-align: center;
-    background: rgba(255,255,255,0.15);
-    border-radius: 10px;
-    padding: 8px 20px;
+.scada-live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #00e676;
+    animation: pulse-green 1.4s infinite;
 }
-.project-total-num { display: block; font-size: 2rem; font-weight: 800; line-height: 1; }
-.project-total-lbl { font-size: 0.75rem; opacity: 0.85; }
+@keyframes pulse-green {
+    0%,100% { opacity:1; box-shadow: 0 0 6px #00e676; }
+    50%      { opacity:0.4; box-shadow: none; }
+}
 
-/* ── Three status cards ── */
-.project-status-row {
+/* Circular Gauges */
+.scada-gauges {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    padding: 24px 12px 16px;
+    background: #0d1f16;
 }
-.pstat-card {
-    padding: 22px 16px;
+.gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-left: 1px solid #1a3a25;
+    position: relative;
+}
+.gauge-wrap:first-child { border-left: none; }
+.gauge-svg {
+    width: 110px; height: 110px;
+    filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));
+}
+.gauge-num {
+    font-size: 28px;
+    font-weight: 800;
+    fill: #e8f5e9;
+    font-family: 'Courier New', monospace;
+}
+.gauge-blue   { fill: #29b6f6; }
+.gauge-red    { fill: #ef5350; }
+.gauge-orange { fill: #ffa726; }
+.gauge-sub {
+    font-size: 10px;
+    fill: #6aac7a;
+}
+.gauge-label {
+    font-size: 0.8rem;
+    color: #8bc99a;
+    font-weight: 600;
     text-align: center;
-    border-right: 1px solid #f0f0f0;
-    transition: background 0.15s;
+    letter-spacing: 0.2px;
 }
-.pstat-card:last-child { border-right: none; }
-.pstat-icon  { font-size: 1.6rem; margin-bottom: 6px; }
-.pstat-value { font-size: 2.2rem; font-weight: 800; line-height: 1; }
-.pstat-label { font-size: 0.8rem; color: #666; margin-top: 4px; font-weight: 600; }
-.pstat-blue  { background: #f0f7ff; }
-.pstat-blue .pstat-value  { color: #1565c0; }
-.pstat-red   { background: #fff5f5; }
-.pstat-red .pstat-value   { color: #c62828; }
-.pstat-orange{ background: #fff8f0; }
-.pstat-orange .pstat-value{ color: #e65100; }
+
+/* Unit Status Grid */
+.scada-units-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #0a1a10;
+    border-top: 1px solid #1a3a25;
+    border-bottom: 1px solid #1a3a25;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #8bc99a;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.scada-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: none;
+    color: #6aac7a;
+    letter-spacing: 0;
+}
+.leg {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-left: 4px;
+}
+.leg-ok    { background: #00e676; box-shadow: 0 0 6px #00e676; }
+.leg-irr   { background: #29b6f6; box-shadow: 0 0 6px #29b6f6; }
+.leg-fault { background: #ffa726; box-shadow: 0 0 6px #ffa726; }
+.leg-disc  { background: #ef5350; box-shadow: 0 0 6px #ef5350; }
+
+.scada-unit-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 18px 20px;
+    background: #0d1f16;
+}
+
+/* Individual Unit Circle */
+.unit-circle {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    border: 2px solid transparent;
+}
+.unit-circle:hover {
+    transform: scale(1.12);
+    z-index: 2;
+}
+.unit-circle .uc-name {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+    max-width: 62px;
+    overflow: hidden;
+    word-break: break-all;
+    direction: rtl;
+}
+.unit-circle .uc-status {
+    font-size: 0.9rem;
+    margin-top: 2px;
+}
+
+/* State colours */
+.uc-ok {
+    background: radial-gradient(circle at 35% 35%, #2ecc71, #1a8c4e);
+    border-color: #00e676;
+    box-shadow: 0 0 12px rgba(0,230,118,0.35);
+    color: #fff;
+}
+.uc-irr {
+    background: radial-gradient(circle at 35% 35%, #39a8e0, #1565c0);
+    border-color: #29b6f6;
+    box-shadow: 0 0 12px rgba(41,182,246,0.45);
+    color: #fff;
+}
+.uc-fault {
+    background: radial-gradient(circle at 35% 35%, #ff9800, #bf5a00);
+    border-color: #ffa726;
+    box-shadow: 0 0 12px rgba(255,167,38,0.45);
+    color: #fff;
+}
+.uc-disc {
+    background: radial-gradient(circle at 35% 35%, #e53935, #7b1a1a);
+    border-color: #ef5350;
+    box-shadow: 0 0 10px rgba(239,83,80,0.35);
+    color: #fff;
+}
+
+/* ── Project Selector bar ── */
+.proj-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 2px 16px;
+    align-items: center;
+}
+.proj-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: #1a2f1e;
+    border: 1.5px solid #2a5235;
+    border-radius: 20px;
+    color: #8bc99a;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+.proj-chip:hover {
+    background: #1f3e24;
+    border-color: #00c853;
+    color: #e8f5e9;
+}
+.proj-chip-active {
+    background: #00c853;
+    border-color: #00e676;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(0,200,83,0.35);
+}
+.proj-chip-badge {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* ── Tab bar SCADA style ── */
+.tab-bar {
+    border-bottom-color: #1a3a25 !important;
+}
+.tab-btn { color: #6aac7a !important; }
+.tab-btn:hover { background: #0d1f16 !important; color: #c8e6c9 !important; }
+.tab-btn.active {
+    color: #00e676 !important;
+    border-bottom-color: #00e676 !important;
+    background: #071510 !important;
+}
 
 /* ── Stats bar extra ── */
 .stat-card.stat-irrigating { background: linear-gradient(135deg,#e3f2fd,#bbdefb); border-top: 4px solid #1976d2; }
@@ -438,6 +730,16 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
+function selectProject(pid, chipEl) {
+    // Update chip active state
+    document.querySelectorAll('.proj-chip').forEach(c => c.classList.remove('proj-chip-active'));
+    chipEl.classList.add('proj-chip-active');
+    // Show/hide panels
+    document.querySelectorAll('.scada-panel').forEach(panel => {
+        panel.style.display = (pid === 'all' || panel.dataset.pid === pid) ? '' : 'none';
+    });
+}
+
 function switchTab(tab) {
     document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
     document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
