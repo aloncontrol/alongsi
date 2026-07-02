@@ -731,6 +731,82 @@ def dismiss_alerts(unit_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/gsi/projects")
+@login_required
+def api_gsi_projects():
+    """Fetch all available GSI projects for the current user (live from GSI API)."""
+    try:
+        from gsi_client import GSIClient
+        client = GSIClient()
+        projects = client.get_user_projects()
+        return jsonify({"ok": True, "projects": projects})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/project/add", methods=["POST"])
+@login_required
+def api_project_add():
+    """Add a project to monitoring: saves to DB and triggers an immediate collection."""
+    if session.get("permission") not in ("admin", "user"):
+        return jsonify({"ok": False, "error": "Unauthorized"}), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    pid  = data.get("project_id")
+    name = (data.get("project_name") or "").strip()
+
+    if not pid or not isinstance(pid, int):
+        return jsonify({"ok": False, "error": "project_id required"}), 400
+
+    try:
+        conn = get_db()
+        upsert_project(conn, pid, name or f"פרויקט {pid}")
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    # Trigger collection for the new project in background
+    def _collect_new():
+        from collector import DataCollector
+        try:
+            dc = DataCollector(project_id=pid)
+            dc.collect_all()
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error(f"Background collect for project {pid} failed: {exc}")
+
+    import threading
+    threading.Thread(target=_collect_new, daemon=True).start()
+
+    return jsonify({"ok": True, "project_id": pid, "project_name": name})
+
+
+@app.route("/api/project/remove", methods=["POST"])
+@login_required
+def api_project_remove():
+    """Remove a project from monitoring (does not delete collected data)."""
+    if session.get("permission") != "admin":
+        return jsonify({"ok": False, "error": "Unauthorized"}), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    pid = data.get("project_id")
+    if not pid:
+        return jsonify({"ok": False, "error": "project_id required"}), 400
+
+    from config import GSI_PROJECT_IDS
+    if int(pid) in GSI_PROJECT_IDS:
+        return jsonify({"ok": False, "error": "לא ניתן להסיר את הפרויקט הראשי"}), 400
+
+    try:
+        conn = get_db()
+        delete_project(conn, int(pid))
+        conn.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    return jsonify({"ok": True})
+
+
 @app.route("/api/process/run", methods=["POST"])
 @login_required
 def api_process_run():

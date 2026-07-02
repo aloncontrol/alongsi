@@ -212,9 +212,26 @@ def run_battery_collection():
 
 
 def run_collection():
-    """Entry point for scheduled collection — runs for every configured project."""
+    """Entry point for scheduled collection.
+
+    Collects data for every project that is:
+    - Listed in GSI_PROJECT_IDS (config), OR
+    - Present in the 'projects' DB table (dynamically added via the dashboard).
+    """
     from config import GSI_PROJECT_IDS
-    for project_id in GSI_PROJECT_IDS:
+    project_ids = set(GSI_PROJECT_IDS)
+
+    # Merge in any projects saved to the DB
+    try:
+        conn = get_db()
+        rows = conn.execute("SELECT project_id FROM projects").fetchall()
+        conn.close()
+        for r in rows:
+            project_ids.add(r["project_id"])
+    except Exception as e:
+        logger.warning(f"Could not read projects from DB: {e}")
+
+    for project_id in sorted(project_ids):
         collector = DataCollector(project_id=project_id)
         collector.collect_all()
 

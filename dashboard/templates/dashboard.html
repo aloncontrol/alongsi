@@ -22,6 +22,26 @@
             <span class="proj-chip-badge">{{ p.total }}</span>
         </button>
         {% endfor %}
+        <button class="proj-chip proj-chip-add" onclick="openAddProject()">
+            ➕ הוסף פרויקט
+        </button>
+    </div>
+
+    <!-- Add Project Modal -->
+    <div id="addProjectModal" class="modal-backdrop" style="display:none;" onclick="closeAddProject(event)">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span>➕ הוסף פרויקט לניטור</span>
+                <button class="modal-close" onclick="closeAddProject()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="projSearch" placeholder="חיפוש לפי שם פרויקט..."
+                       oninput="filterProjects()" class="proj-search-input"
+                       autocomplete="off" autocorrect="off" spellcheck="false">
+                <div id="projListStatus" class="proj-list-status">⏳ טוען רשימת פרויקטים...</div>
+                <div id="projList" class="proj-list" style="display:none;"></div>
+            </div>
+        </div>
     </div>
 
     {% for p in projects_summary %}
@@ -609,6 +629,148 @@
     font-weight: 700;
 }
 
+/* ── Add Project button variant ── */
+.proj-chip-add {
+    background: #0a1e12;
+    border-color: #00c853;
+    color: #00c853;
+}
+.proj-chip-add:hover {
+    background: #00c853;
+    color: #fff;
+}
+
+/* ── Modal ── */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    z-index: 9000;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+.modal-box {
+    background: #0d1f16;
+    border: 1px solid #1e4d30;
+    border-radius: 16px;
+    width: min(520px, 94vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    overflow: hidden;
+}
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #0a1a10;
+    border-bottom: 1px solid #1a3a25;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #e8f5e9;
+}
+.modal-close {
+    background: none;
+    border: none;
+    color: #6aac7a;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+.modal-close:hover { background: #1a3a25; color: #fff; }
+.modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.proj-search-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: #0a1a10;
+    border: 1.5px solid #1e4d30;
+    border-radius: 10px;
+    color: #e8f5e9;
+    font-size: 0.95rem;
+    font-family: inherit;
+    direction: rtl;
+    box-sizing: border-box;
+}
+.proj-search-input:focus {
+    outline: none;
+    border-color: #00c853;
+}
+.proj-list-status {
+    color: #6aac7a;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 20px;
+}
+.proj-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+.proj-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #0a1a10;
+    border: 1px solid #1a3a25;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.12s;
+    direction: rtl;
+}
+.proj-item:hover { background: #112618; border-color: #00c853; }
+.proj-item.already-added {
+    opacity: 0.55;
+    cursor: default;
+    border-color: #1a3a25;
+}
+.proj-item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e8f5e9;
+}
+.proj-item-id {
+    font-size: 0.75rem;
+    color: #6aac7a;
+    font-family: monospace;
+}
+.proj-item-add {
+    background: #00c853;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+.proj-item-add:hover { background: #00e676; color: #000; }
+.proj-item-add:disabled { background: #1e4d30; color: #6aac7a; cursor: default; }
+.proj-item-badge-added {
+    background: #1e4d30;
+    color: #6aac7a;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-right: 8px;
+}
+
 /* ── Tab bar SCADA style ── */
 .tab-bar {
     border-bottom-color: #1a3a25 !important;
@@ -730,6 +892,117 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
+/* ── Add-Project modal ── */
+let _allGsiProjects = null;   // cached project list from GSI API
+const _monitoredIds = new Set([{% for p in projects_summary %}{{ p.id }},{% endfor %}]);
+
+function openAddProject() {
+    document.getElementById('addProjectModal').style.display = '';
+    document.getElementById('projSearch').value = '';
+    document.getElementById('projList').style.display = 'none';
+    document.getElementById('projListStatus').textContent = '⏳ טוען רשימת פרויקטים...';
+    document.getElementById('projListStatus').style.display = '';
+    document.getElementById('projSearch').focus();
+
+    if (_allGsiProjects) {
+        renderProjectList(_allGsiProjects);
+        return;
+    }
+    fetch('/api/gsi/projects')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) throw new Error(data.error || 'שגיאה');
+            _allGsiProjects = data.projects;
+            renderProjectList(_allGsiProjects);
+        })
+        .catch(err => {
+            document.getElementById('projListStatus').textContent = '❌ שגיאה בטעינת פרויקטים: ' + err.message;
+        });
+}
+
+function closeAddProject(evt) {
+    if (evt && evt.target !== document.getElementById('addProjectModal')) return;
+    document.getElementById('addProjectModal').style.display = 'none';
+}
+
+function filterProjects() {
+    if (!_allGsiProjects) return;
+    const q = document.getElementById('projSearch').value.toLowerCase();
+    const filtered = q
+        ? _allGsiProjects.filter(p => p.project_name.toLowerCase().includes(q) ||
+                                      String(p.project_id).includes(q))
+        : _allGsiProjects;
+    renderProjectList(filtered);
+}
+
+function renderProjectList(projects) {
+    const list = document.getElementById('projList');
+    const status = document.getElementById('projListStatus');
+    list.innerHTML = '';
+
+    const q = document.getElementById('projSearch').value.toLowerCase();
+    const filtered = q
+        ? projects.filter(p => p.project_name.toLowerCase().includes(q) ||
+                               String(p.project_id).includes(q))
+        : projects;
+
+    if (filtered.length === 0) {
+        status.textContent = 'לא נמצאו פרויקטים';
+        status.style.display = '';
+        list.style.display = 'none';
+        return;
+    }
+
+    status.style.display = 'none';
+    list.style.display = '';
+
+    filtered.forEach(p => {
+        const isAdded = _monitoredIds.has(p.project_id);
+        const item = document.createElement('div');
+        item.className = 'proj-item' + (isAdded ? ' already-added' : '');
+        item.innerHTML = `
+            <div>
+                <div class="proj-item-name">${p.project_name}</div>
+                <div class="proj-item-id">#${p.project_id}</div>
+            </div>
+            ${isAdded
+                ? '<span class="proj-item-badge-added">✓ מנוטר</span>'
+                : `<button class="proj-item-add" onclick="addProject(${p.project_id}, '${p.project_name.replace(/'/g,"\\'")}', this)">+ הוסף</button>`
+            }`;
+        list.appendChild(item);
+    });
+}
+
+function addProject(pid, name, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('/api/project/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: pid, project_name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            btn.textContent = '✓ נוסף';
+            btn.style.background = '#1e4d30';
+            _monitoredIds.add(pid);
+            // Reload page after a moment to show the new project panel
+            setTimeout(() => { location.reload(); }, 1200);
+        } else {
+            btn.disabled = false;
+            btn.textContent = '+ הוסף';
+            alert('שגיאה: ' + (data.error || 'לא ידוע'));
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = '+ הוסף'; });
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('addProjectModal').style.display = 'none';
+});
+
 function selectProject(pid, chipEl) {
     // Update chip active state
     document.querySelectorAll('.proj-chip').forEach(c => c.classList.remove('proj-chip-active'));

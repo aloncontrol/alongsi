@@ -129,6 +129,50 @@ class GSIClient:
         logger.warning(f"Unexpected CachAlerts response shape: {type(body)}")
         return []
 
+    def get_user_projects(self):
+        """Fetch all projects available to this user from GSI.
+
+        Calls GET /api/api/project/UserProjects.
+        Returns list of dicts: [{project_id, project_name}, ...] sorted by name.
+        """
+        url = f"{self.base_url}/api/api/project/UserProjects"
+        time.sleep(self._request_delay)
+        try:
+            resp = self.session.get(url, timeout=30)
+            if resp.status_code == 401:
+                logger.warning("401 on UserProjects — refreshing token")
+                if self._refresh_token():
+                    resp = self.session.get(url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.error(f"get_user_projects failed: {e}")
+            return []
+
+        # Normalise response shape
+        if isinstance(data, list):
+            if data and isinstance(data[0], dict) and "Body" in data[0]:
+                items = data[0]["Body"]
+            else:
+                items = data
+        elif isinstance(data, dict):
+            items = data.get("Body", data.get("body", []))
+            if not isinstance(items, list):
+                items = []
+        else:
+            items = []
+
+        result = []
+        for item in items:
+            pid = item.get("ProjectID") or item.get("Id") or item.get("id")
+            name = (item.get("ProjectName") or item.get("Name") or item.get("name") or "").strip()
+            if pid:
+                result.append({"project_id": int(pid), "project_name": name or f"Project {pid}"})
+
+        result.sort(key=lambda x: x["project_name"])
+        logger.info(f"get_user_projects: {len(result)} projects fetched")
+        return result
+
     def get_unit_list(self):
         """Get list of all controllers in the project (simple list, may be incomplete).
 
