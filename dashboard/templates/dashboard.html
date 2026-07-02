@@ -4,61 +4,60 @@
 {% block content %}
 <!-- Tab switcher -->
 <div class="tab-bar">
-    <button class="tab-btn" id="tab-btn-dashboard" onclick="switchTab('dashboard')">📊 מצב כללי</button>
-    <button class="tab-btn active" id="tab-btn-projects" onclick="switchTab('projects')">📋 פרויקטים</button>
+    <button class="tab-btn {% if active_pid == 0 %}active{% endif %}"
+            id="tab-btn-dashboard" onclick="switchTab('dashboard')">📊 מצב כללי</button>
+
+    <!-- Projects tab = dropdown trigger -->
+    <div class="tab-dropdown-wrap" id="tabDropdownWrap">
+        <button class="tab-btn {% if active_pid != 0 %}active{% endif %}"
+                id="tab-btn-projects" onclick="toggleProjDropdown(event)">
+            📋
+            {% if active_pid != 0 %}{{ active_project_name }}{% else %}פרויקטים{% endif %}
+            <span class="tab-arrow" id="tabArrow">▾</span>
+        </button>
+
+        <!-- Dropdown panel -->
+        <div class="proj-dropdown" id="projDropdown">
+            <div class="proj-dropdown-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
+                </svg>
+                <input type="text" id="projDropInput" placeholder="חיפוש פרויקט..."
+                       oninput="filterDropdown()" autocomplete="off" dir="rtl">
+            </div>
+            <div class="proj-dropdown-list" id="projDropList">
+                {% for p in projects_summary %}
+                <a class="proj-drop-item {% if p.id == active_pid %}drop-active{% endif %}"
+                   href="/?pid={{ p.id }}" data-name="{{ p.name }}">
+                    <span class="pdi-name">{{ p.name }}</span>
+                    {% if p.total > 0 %}
+                    <span class="pdi-badges">
+                        <span class="pdi-b pdi-total">{{ p.total }}</span>
+                        {% if p.faults > 0 %}<span class="pdi-b pdi-fault">⚠ {{ p.faults }}</span>{% endif %}
+                        {% if p.disconnected > 0 %}<span class="pdi-b pdi-disc">📡 {{ p.disconnected }}</span>{% endif %}
+                    </span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            <div id="projDropEmpty" style="display:none;padding:14px;text-align:center;color:#4a8a5a;font-size:0.85rem;">לא נמצאו פרויקטים</div>
+        </div>
+    </div>
 </div>
 
 <!-- ═══ PROJECTS TAB ═══ -->
-<div id="tab-projects" style="margin-top:14px;">
+<div id="tab-projects" style="margin-top:14px;{% if active_pid == 0 %}display:none;{% endif %}">
 
 {% if active_pid == 0 %}
-<!-- ── Project Picker ── -->
-<div class="proj-picker">
-    <div class="proj-picker-search">
-        <svg class="picker-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
-        </svg>
-        <input type="text" id="projPickerInput" class="proj-picker-input"
-               placeholder="חיפוש פרויקט..." oninput="filterPicker()" autocomplete="off" dir="rtl">
-    </div>
-    <div class="proj-picker-list" id="projPickerList">
-        {% for p in projects_summary %}
-        <a class="proj-picker-item {% if p.total > 0 %}has-data{% endif %}"
-           href="/?pid={{ p.id }}" data-name="{{ p.name }}">
-            <div class="ppi-left">
-                <div class="ppi-name">{{ p.name }}</div>
-                <div class="ppi-id">#{{ p.id }}</div>
-            </div>
-            <div class="ppi-right">
-                {% if p.total > 0 %}
-                <span class="ppi-badge ppi-total">{{ p.total }} בקרים</span>
-                {% if p.faults > 0 %}<span class="ppi-badge ppi-fault">{{ p.faults }} תקלות</span>{% endif %}
-                {% if p.disconnected > 0 %}<span class="ppi-badge ppi-disc">{{ p.disconnected }} מנותק</span>{% endif %}
-                {% if p.irrigating > 0 %}<span class="ppi-badge ppi-irr">{{ p.irrigating }} השקיה</span>{% endif %}
-                {% else %}
-                <span class="ppi-badge ppi-nodata">אין נתונים</span>
-                {% endif %}
-                <svg class="ppi-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="15 18 9 12 15 6"/>
-                </svg>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-    <div id="projPickerEmpty" class="proj-picker-empty" style="display:none;">לא נמצאו פרויקטים</div>
+<!-- No project selected — hint -->
+<div style="text-align:center;padding:60px 24px;color:#4a8a5a;">
+    <div style="font-size:2rem;margin-bottom:10px;">📋</div>
+    <div style="font-size:1rem;color:#6aac7a;font-weight:600;">בחר פרויקט מהרשימה</div>
+    <div style="font-size:0.85rem;margin-top:6px;">לחץ על הטאב "פרויקטים" לפתיחת הרשימה</div>
 </div>
 
 {% else %}
-<!-- ── SCADA Panel for selected project ── -->
 {% for p in projects_summary if p.id == active_pid %}
-
-<a class="proj-back-btn" href="/?">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-        <polyline points="9 18 15 12 9 6"/>
-    </svg>
-    כל הפרויקטים
-</a>
-
 {% if p.total == 0 %}
 <div class="scada-panel">
     <div class="scada-header">
@@ -175,7 +174,7 @@
 </div>
 
 <!-- ═══ DASHBOARD TAB ═══ -->
-<div id="tab-dashboard" style="display:none;">
+<div id="tab-dashboard" {% if active_pid != 0 %}style="display:none;"{% endif %}>
 
 <!-- Compact stats bar -->
 <div class="stats-bar" style="margin-top:14px;">
@@ -609,94 +608,96 @@
     color: #fff;
 }
 
-/* ── Project Picker ── */
-.proj-picker {
-    background: #0a1a10;
-    border: 1px solid #1e4d30;
-    border-radius: 14px;
-    overflow: hidden;
-    margin-bottom: 4px;
+/* ── Projects Tab Dropdown ── */
+.tab-dropdown-wrap {
+    position: relative;
+    display: inline-flex;
 }
-.proj-picker-search {
+.tab-arrow {
+    font-size: 0.75rem;
+    margin-right: 4px;
+    display: inline-block;
+    transition: transform 0.15s;
+}
+.tab-arrow.open { transform: rotate(180deg); }
+
+.proj-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 500;
+    width: 340px;
+    background: #0d1f16;
+    border: 1px solid #1e4d30;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+    animation: dropDown 0.15s ease;
+}
+.proj-dropdown.open { display: block; }
+@keyframes dropDown {
+    from { opacity:0; transform:translateY(-6px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.proj-dropdown-search {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 10px 14px;
     border-bottom: 1px solid #1a3a25;
-    background: #0d1f16;
+    background: #0a1a10;
 }
-.picker-search-icon { width:18px; height:18px; color:#6aac7a; flex-shrink:0; }
-.proj-picker-input {
+.proj-dropdown-search svg { flex-shrink:0; color:#6aac7a; }
+#projDropInput {
     flex: 1;
     background: none;
     border: none;
     color: #e8f5e9;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-family: inherit;
     outline: none;
 }
-.proj-picker-input::placeholder { color: #4a8a5a; }
-.proj-picker-list {
-    max-height: 420px;
+#projDropInput::placeholder { color: #4a8a5a; }
+.proj-dropdown-list {
+    max-height: 380px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #1e4d30 transparent;
 }
-.proj-picker-item {
+.proj-drop-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 13px 18px;
+    padding: 10px 14px;
     border-bottom: 1px solid #0f2818;
     text-decoration: none;
-    transition: background 0.12s;
-    cursor: pointer;
+    transition: background 0.1s;
     direction: rtl;
+    gap: 8px;
 }
-.proj-picker-item:last-child { border-bottom: none; }
-.proj-picker-item:hover { background: #112618; }
-.proj-picker-item.has-data:hover { background: #0f3020; }
-.ppi-left { text-align: right; }
-.ppi-name { font-size: 0.92rem; font-weight: 600; color: #e8f5e9; }
-.ppi-id   { font-size: 0.72rem; color: #4a8a5a; font-family: monospace; margin-top: 2px; }
-.ppi-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    margin-right: 12px;
+.proj-drop-item:last-child { border-bottom: none; }
+.proj-drop-item:hover { background: #112618; }
+.proj-drop-item.drop-active { background: rgba(0,230,118,0.08); }
+.pdi-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #e8f5e9;
+    flex: 1;
+    text-align: right;
 }
-.ppi-badge {
-    border-radius: 8px;
-    padding: 2px 9px;
-    font-size: 0.72rem;
+.proj-drop-item.drop-active .pdi-name { color: #00e676; }
+.pdi-badges { display: flex; gap: 4px; flex-shrink: 0; }
+.pdi-b {
+    border-radius: 6px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
     font-weight: 700;
     white-space: nowrap;
 }
-.ppi-total  { background: rgba(0,230,118,0.12); color: #00e676; }
-.ppi-fault  { background: rgba(255,167,38,0.15); color: #ffa726; }
-.ppi-disc   { background: rgba(239,83,80,0.15);  color: #ef5350; }
-.ppi-irr    { background: rgba(41,182,246,0.15); color: #29b6f6; }
-.ppi-nodata { background: rgba(255,255,255,0.05); color: #4a8a5a; }
-.ppi-arrow  { width:16px; height:16px; color:#2a6a3a; flex-shrink:0; }
-.proj-picker-item:hover .ppi-arrow { color: #00e676; }
-.proj-picker-empty {
-    text-align: center; padding: 24px; color: #4a8a5a; font-size: 0.9rem;
-}
-
-/* ── Back button ── */
-.proj-back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: #6aac7a;
-    text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 6px 12px 12px 0;
-    transition: color 0.12s;
-}
-.proj-back-btn:hover { color: #00e676; }
+.pdi-total { background: rgba(0,230,118,0.12); color: #00e676; }
+.pdi-fault { background: rgba(255,167,38,0.18); color: #ffa726; }
+.pdi-disc  { background: rgba(239,83,80,0.15);  color: #ef5350; }
 
 .proj-search-input {
     width: 100%;
@@ -902,17 +903,41 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 
 
-function filterPicker() {
-    const q = document.getElementById('projPickerInput').value.trim().toLowerCase();
-    const items = document.querySelectorAll('.proj-picker-item');
+function toggleProjDropdown(e) {
+    e.stopPropagation();
+    const dd = document.getElementById('projDropdown');
+    const arrow = document.getElementById('tabArrow');
+    const isOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dd.classList.add('open');
+        arrow.classList.add('open');
+        setTimeout(() => document.getElementById('projDropInput')?.focus(), 50);
+    }
+}
+function closeAllDropdowns() {
+    document.getElementById('projDropdown')?.classList.remove('open');
+    document.getElementById('tabArrow')?.classList.remove('open');
+}
+document.addEventListener('click', e => {
+    if (!document.getElementById('tabDropdownWrap')?.contains(e.target)) {
+        closeAllDropdowns();
+    }
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeAllDropdowns();
+});
+
+function filterDropdown() {
+    const q = document.getElementById('projDropInput').value.trim().toLowerCase();
+    const items = document.querySelectorAll('.proj-drop-item');
     let visible = 0;
     items.forEach(item => {
-        const name = item.dataset.name.toLowerCase();
-        const show = !q || name.includes(q);
+        const show = !q || item.dataset.name.toLowerCase().includes(q);
         item.style.display = show ? '' : 'none';
         if (show) visible++;
     });
-    const empty = document.getElementById('projPickerEmpty');
+    const empty = document.getElementById('projDropEmpty');
     if (empty) empty.style.display = visible === 0 ? '' : 'none';
 }
 
@@ -935,10 +960,10 @@ function triggerCollect(pid, btn) {
 }
 
 function switchTab(tab) {
+    closeAllDropdowns();
     document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
     document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
     document.getElementById('tab-btn-dashboard').classList.toggle('active', tab === 'dashboard');
-    document.getElementById('tab-btn-projects').classList.toggle('active',  tab === 'projects');
 }
 function dismissFault(unitId, btn) {
     btn.disabled = true;

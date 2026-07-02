@@ -251,6 +251,8 @@ def index():
     if active_pid and active_pid not in proj_stats:
         active_pid = 0
 
+    active_project_name = proj_stats[active_pid]["name"] if active_pid and active_pid in proj_stats else ""
+
     return render_template("dashboard.html",
         active_page="dashboard",
         snapshots=enriched,
@@ -262,6 +264,7 @@ def index():
         total_faults=total_faults,
         projects_summary=projects_list,
         active_pid=active_pid,
+        active_project_name=active_project_name,
         json=json,
         **_base_ctx()
     )
