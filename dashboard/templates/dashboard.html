@@ -28,7 +28,7 @@
     </div>
 
     <!-- Add Project Modal -->
-    <div id="addProjectModal" class="modal-backdrop" style="display:none;" onclick="closeAddProject(event)">
+    <div id="addProjectModal" class="modal-backdrop" onclick="closeAddProject(event)">
         <div class="modal-box" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <span>➕ הוסף פרויקט לניטור</span>
@@ -656,10 +656,12 @@
     inset: 0;
     background: rgba(0,0,0,0.72);
     z-index: 9000;
-    display: flex !important;
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(4px);
+}
+.modal-backdrop.open {
+    display: flex;
 }
 .modal-box {
     background: #0d1f16;
@@ -907,7 +909,7 @@ let _allGsiProjects = null;   // cached project list from GSI API
 const _monitoredIds = new Set([{% for p in projects_summary %}{{ p.id }},{% endfor %}]);
 
 function openAddProject() {
-    document.getElementById('addProjectModal').style.display = '';
+    document.getElementById('addProjectModal').classList.add('open');
     document.getElementById('projSearch').value = '';
     document.getElementById('projList').style.display = 'none';
     document.getElementById('projListStatus').textContent = '⏳ טוען רשימת פרויקטים...';
@@ -932,7 +934,7 @@ function openAddProject() {
 
 function closeAddProject(evt) {
     if (evt && evt.target !== document.getElementById('addProjectModal')) return;
-    document.getElementById('addProjectModal').style.display = 'none';
+    document.getElementById('addProjectModal').classList.remove('open');
 }
 
 function filterProjects() {
@@ -1010,7 +1012,7 @@ function addProject(pid, name, btn) {
 
 // Close modal on Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('addProjectModal').style.display = 'none';
+    if (e.key === 'Escape') document.getElementById('addProjectModal').classList.remove('open');
 });
 
 function selectProject(pid, tabEl) {
