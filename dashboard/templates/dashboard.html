@@ -10,13 +10,13 @@
 <div class="gauge-wrap">
   <svg viewBox="0 0 200 128" class="gauge-svg">
     <!-- zone backgrounds -->
-    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#1a4a1a" stroke-width="18" stroke-linecap="butt"/>
-    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#4a4200" stroke-width="18" stroke-linecap="butt"/>
-    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#4a1a1a" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#c8e6c9" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#fff9c4" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#ffcdd2" stroke-width="18" stroke-linecap="butt"/>
     <!-- thin zone lines -->
-    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#2a8a2a" stroke-width="2"/>
-    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#8a7a00" stroke-width="2"/>
-    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#8a2a2a" stroke-width="2"/>
+    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#388e3c" stroke-width="2"/>
+    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#f9a825" stroke-width="2"/>
+    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#c62828" stroke-width="2"/>
     <!-- value arc -->
     <path d="M 18 110 A 82 82 0 0 1 182 110"
           fill="none" stroke="{{ color }}" stroke-width="6" stroke-linecap="round"
@@ -27,10 +27,10 @@
     <text x="190" y="125" class="spd-tick" text-anchor="end">100</text>
     <!-- needle -->
     <line x1="100" y1="110" x2="100" y2="46"
-          stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"
+          stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"
           transform="rotate({{ rot }} 100 110)"/>
     <!-- hub -->
-    <circle cx="100" cy="110" r="6" fill="#e8f5e9" stroke="#0d1f16" stroke-width="2"/>
+    <circle cx="100" cy="110" r="6" fill="#444" stroke="#fff" stroke-width="2"/>
     <!-- value text -->
     <text x="100" y="88" text-anchor="middle" class="gauge-num" fill="{{ color }}">{{ value }}</text>
     <text x="100" y="103" text-anchor="middle" class="gauge-sub">{{ sub }}</text>
@@ -474,7 +474,7 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 0;
     padding: 24px 12px 16px;
-    background: #2e5c44;
+    background: #f0f5f2;
 }
 .gauge-wrap {
     display: flex;
@@ -487,31 +487,30 @@
 }
 .gauge-wrap:first-child { border-left: none; }
 .gauge-svg {
-    width: 160px; height: 104px;
-    filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));
+    width: 200px; height: 130px;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
     overflow: visible;
 }
 .gauge-num {
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 800;
-    fill: #e8f5e9;
     font-family: 'Courier New', monospace;
 }
-.gauge-blue   { fill: #29b6f6; }
-.gauge-red    { fill: #ef5350; }
-.gauge-orange { fill: #ffa726; }
+.gauge-blue   { fill: #0277bd; }
+.gauge-red    { fill: #c62828; }
+.gauge-orange { fill: #e65100; }
 .gauge-sub {
     font-size: 9px;
-    fill: #6aac7a;
+    fill: #555;
 }
 .spd-tick {
     font-size: 9px;
-    fill: #4a7a5a;
+    fill: #777;
     font-family: 'Courier New', monospace;
 }
 .gauge-label {
-    font-size: 0.8rem;
-    color: #8bc99a;
+    font-size: 0.82rem;
+    color: #2a4a34;
     font-weight: 600;
     text-align: center;
     letter-spacing: 0.2px;
