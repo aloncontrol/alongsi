@@ -189,6 +189,8 @@ def index():
         batt = battery_stats.get(d["control_unit_id"])
         d["noon_avg"] = batt["noon_avg"] if batt else None
         d["midnight_avg"] = batt["midnight_avg"] if batt else None
+        # Count active valves from output_state bitmask
+        d["active_valves"] = bin(d.get("output_state") or 0).count('1')
         enriched.append(d)
 
     # Sort: units with alerts first (by category order), then by alerts_count desc,

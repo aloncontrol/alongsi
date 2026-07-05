@@ -164,6 +164,9 @@
     <div class="scada-unit-grid">
         {% for s in snapshots if s.get('project_id') == p.id %}
         {% set uclass = 'uc-disc' if s.connection_status != 1 else ('uc-irr' if (s.output_state or 0) > 0 else ('uc-fault' if s.primary_alert_category else 'uc-ok')) %}
+        {% set is_dc = s.model_view and 'DC' in s.model_view %}
+        {% set batt = s.noon_avg or s.midnight_avg %}
+        {% set batt_thresh = 7.3 if is_dc else 5.6 %}
         <div class="unit-circle {{ uclass }}" onclick="window.location='/unit/{{ s.control_unit_id }}'"
              title="{{ s.unit_name }}{% if s.primary_alert_name %} — {{ s.primary_alert_name }}{% endif %}">
             <div class="uc-header">
@@ -171,9 +174,14 @@
                 {% if s.primary_alert_category %}<span class="uc-bell">🔔</span>{% endif %}
             </div>
             <div class="uc-body">
-                {% if s.primary_alert_category %}<div class="uc-alert-txt">{{ s.primary_alert_category | truncate(10, true, '') }}</div>{% endif %}
+                {% if s.primary_alert_category %}<div class="uc-alert-txt">{{ s.primary_alert_category | truncate(12, true, '') }}</div>{% endif %}
                 <div class="uc-status">{% if s.connection_status != 1 %}⛔{% elif (s.output_state or 0) > 0 %}💧{% elif s.primary_alert_category %}⚠️{% else %}✅{% endif %}</div>
                 <div class="uc-label">{% if s.connection_status != 1 %}מנותק{% elif (s.output_state or 0) > 0 %}בהשקיה{% elif s.primary_alert_category %}תקלה{% else %}פעיל{% endif %}</div>
+                <div class="uc-info-strip">
+                    {% if s.model_view %}<span class="uc-tag {{ 'tag-dc' if is_dc else 'tag-ac' }}">{{ 'DC' if is_dc else 'AC' }}</span>{% endif %}
+                    {% if s.active_valves and s.active_valves > 0 %}<span class="uc-tag tag-valve">{{ s.active_valves }}/{{ s.valve_num or '?' }}💧</span>{% elif s.valve_num %}<span class="uc-tag">{{ s.valve_num }} מג׳</span>{% endif %}
+                    {% if batt %}<span class="uc-tag {{ 'tag-batt-low' if batt < batt_thresh else 'tag-batt-ok' }}">{{ "%.1f"|format(batt) }}V</span>{% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -640,6 +648,29 @@
 .uc-irr  .uc-header { background: #1565c0; }
 .uc-fault .uc-header { background: #bf360c; }
 .uc-disc .uc-header { background: #616161; }
+
+/* Info strip tags */
+.uc-info-strip {
+    display: flex;
+    gap: 3px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.uc-tag {
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.58rem;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #eeeeee;
+    color: #333;
+}
+.tag-dc       { background: #e3f2fd; color: #1565c0; }
+.tag-ac       { background: #f3e5f5; color: #6a1b9a; }
+.tag-batt-ok  { background: #e8f5e9; color: #1b5e20; }
+.tag-batt-low { background: #ffebee; color: #b71c1c; }
+.tag-valve    { background: #e1f5fe; color: #01579b; }
 
 /* ── Projects Tab Dropdown ── */
 .tab-dropdown-wrap {

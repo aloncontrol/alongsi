@@ -378,7 +378,7 @@ def get_latest_snapshots_all(conn):
     return conn.execute("""
         SELECT s.*, u.unit_name, u.model_view, u.serial_number, u.address,
                u.comm_type, u.firmware_version, u.latitude, u.longitude,
-               u.project_id
+               u.project_id, u.valve_num
         FROM unit_snapshots s
         JOIN units u ON s.control_unit_id = u.control_unit_id
         WHERE s.id IN (
@@ -399,7 +399,7 @@ def get_latest_snapshots_filtered(conn, project_ids=None):
     return conn.execute(f"""
         SELECT s.*, u.unit_name, u.model_view, u.serial_number, u.address,
                u.comm_type, u.firmware_version, u.latitude, u.longitude,
-               u.project_id
+               u.project_id, u.valve_num
         FROM unit_snapshots s
         JOIN units u ON s.control_unit_id = u.control_unit_id
         WHERE s.id IN (
