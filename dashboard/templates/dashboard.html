@@ -10,13 +10,13 @@
 <div class="gauge-wrap">
   <svg viewBox="0 0 200 128" class="gauge-svg">
     <!-- zone backgrounds -->
-    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#0e2e0e" stroke-width="18" stroke-linecap="butt"/>
-    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#2e2a00" stroke-width="18" stroke-linecap="butt"/>
-    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#2e0e0e" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#1a4a1a" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#4a4200" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#4a1a1a" stroke-width="18" stroke-linecap="butt"/>
     <!-- thin zone lines -->
-    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#1a6a1a" stroke-width="2"/>
-    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#6a6000" stroke-width="2"/>
-    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#6a1a1a" stroke-width="2"/>
+    <path d="M 18 110 A 82 82 0 0 1 52 44"   fill="none" stroke="#2a8a2a" stroke-width="2"/>
+    <path d="M 52 44  A 82 82 0 0 1 125 32"  fill="none" stroke="#8a7a00" stroke-width="2"/>
+    <path d="M 125 32 A 82 82 0 0 1 182 110" fill="none" stroke="#8a2a2a" stroke-width="2"/>
     <!-- value arc -->
     <path d="M 18 110 A 82 82 0 0 1 182 110"
           fill="none" stroke="{{ color }}" stroke-width="6" stroke-linecap="round"
@@ -400,9 +400,9 @@
    SCADA Panel — Professional Dashboard
    ══════════════════════════════════════════ */
 .scada-panel {
-    background: #0d1f16;
+    background: #2e5c44;
     border-radius: 16px;
-    border: 1px solid #1e4d30;
+    border: 1px solid #3a8060;
     box-shadow: 0 6px 32px rgba(0,0,0,0.45);
     overflow: hidden;
     margin-bottom: 22px;
@@ -414,7 +414,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 22px;
-    background: linear-gradient(135deg, #0a1e12 0%, #12382a 100%);
+    background: linear-gradient(135deg, #2a5038 0%, #3a7a55 100%);
     border-bottom: 1px solid #1e4d30;
 }
 .scada-header-right {
@@ -474,7 +474,7 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 0;
     padding: 24px 12px 16px;
-    background: #0d1f16;
+    background: #2e5c44;
 }
 .gauge-wrap {
     display: flex;
@@ -523,9 +523,9 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 20px;
-    background: #0a1a10;
-    border-top: 1px solid #1a3a25;
-    border-bottom: 1px solid #1a3a25;
+    background: #2e5c44;
+    border-top: 1px solid #3a8060;
+    border-bottom: 1px solid #3a8060;
     font-size: 0.85rem;
     font-weight: 700;
     color: #8bc99a;
@@ -558,7 +558,7 @@
     flex-wrap: wrap;
     gap: 8px;
     padding: 16px 18px 20px;
-    background: #0d1f16;
+    background: #2e5c44;
 }
 
 /* Individual Unit Circle */
@@ -916,6 +916,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function toggleProjDropdown(e) {
     e.stopPropagation();
+    {% if active_pid != 0 %}
+    // Project already loaded — just switch back to project view
+    closeAllDropdowns();
+    switchTab('projects');
+    return;
+    {% endif %}
+    // No project selected — open the picker dropdown
     const dd = document.getElementById('projDropdown');
     const arrow = document.getElementById('tabArrow');
     const isOpen = dd.classList.contains('open');
@@ -975,6 +982,7 @@ function switchTab(tab) {
     document.getElementById('tab-dashboard').style.display = tab === 'dashboard' ? '' : 'none';
     document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
     document.getElementById('tab-btn-dashboard').classList.toggle('active', tab === 'dashboard');
+    document.getElementById('tab-btn-projects')?.classList.toggle('active', tab === 'projects');
 }
 function dismissFault(unitId, btn) {
     btn.disabled = true;
