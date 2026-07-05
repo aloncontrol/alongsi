@@ -166,8 +166,15 @@
         {% set uclass = 'uc-disc' if s.connection_status != 1 else ('uc-irr' if (s.output_state or 0) > 0 else ('uc-fault' if s.primary_alert_category else 'uc-ok')) %}
         <div class="unit-circle {{ uclass }}" onclick="window.location='/unit/{{ s.control_unit_id }}'"
              title="{{ s.unit_name }}{% if s.primary_alert_name %} — {{ s.primary_alert_name }}{% endif %}">
-            <div class="uc-name">{{ s.unit_name | truncate(12, true, '') }}</div>
-            <div class="uc-status">{% if s.connection_status != 1 %}⛔{% elif (s.output_state or 0) > 0 %}💧{% elif s.primary_alert_category %}⚠{% else %}✓{% endif %}</div>
+            <div class="uc-header">
+                <span class="uc-name">{{ s.unit_name | truncate(14, true, '') }}</span>
+                {% if s.primary_alert_category %}<span class="uc-bell">🔔</span>{% endif %}
+            </div>
+            <div class="uc-body">
+                {% if s.primary_alert_category %}<div class="uc-alert-txt">{{ s.primary_alert_category | truncate(10, true, '') }}</div>{% endif %}
+                <div class="uc-status">{% if s.connection_status != 1 %}⛔{% elif (s.output_state or 0) > 0 %}💧{% elif s.primary_alert_category %}⚠️{% else %}✅{% endif %}</div>
+                <div class="uc-label">{% if s.connection_status != 1 %}מנותק{% elif (s.output_state or 0) > 0 %}בהשקיה{% elif s.primary_alert_category %}תקלה{% else %}פעיל{% endif %}</div>
+            </div>
         </div>
         {% endfor %}
     </div>
@@ -555,68 +562,84 @@
 .scada-unit-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     padding: 16px 18px 20px;
-    background: #2e5c44;
+    background: #eef2ee;
 }
 
-/* Individual Unit Card */
+/* Unit Card — Galcon style */
 .unit-circle {
-    width: 78px; height: 72px;
-    border-radius: 10px;
+    width: 115px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    transition: transform 0.15s, box-shadow 0.15s;
+    border: 1px solid rgba(0,0,0,0.08);
+    direction: rtl;
+    background: #fff;
+}
+.unit-circle:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+    z-index: 2;
+    position: relative;
+}
+.uc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    min-height: 30px;
+}
+.uc-name {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    flex: 1;
+    text-align: right;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.uc-bell {
+    font-size: 0.7rem;
+    margin-left: 3px;
+    flex-shrink: 0;
+}
+.uc-body {
+    background: #fff;
+    padding: 6px 4px 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 2px;
+    min-height: 58px;
     justify-content: center;
-    cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    position: relative;
-    border: 2px solid transparent;
 }
-.unit-circle:hover {
-    transform: scale(1.12);
-    z-index: 2;
-}
-.unit-circle .uc-name {
-    font-size: 0.55rem;
+.uc-alert-txt {
+    font-size: 0.58rem;
+    color: #c62828;
     font-weight: 700;
     text-align: center;
-    line-height: 1.2;
-    max-width: 62px;
-    overflow: hidden;
-    word-break: break-all;
     direction: rtl;
 }
-.unit-circle .uc-status {
-    font-size: 0.9rem;
-    margin-top: 2px;
+.uc-status {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+.uc-label {
+    font-size: 0.62rem;
+    color: #444;
+    font-weight: 600;
 }
 
-/* State colours */
-.uc-ok {
-    background: radial-gradient(circle at 35% 35%, #2ecc71, #1a8c4e);
-    border-color: #00e676;
-    box-shadow: 0 0 12px rgba(0,230,118,0.35);
-    color: #fff;
-}
-.uc-irr {
-    background: radial-gradient(circle at 35% 35%, #39a8e0, #1565c0);
-    border-color: #29b6f6;
-    box-shadow: 0 0 12px rgba(41,182,246,0.45);
-    color: #fff;
-}
-.uc-fault {
-    background: radial-gradient(circle at 35% 35%, #ff9800, #bf5a00);
-    border-color: #ffa726;
-    box-shadow: 0 0 12px rgba(255,167,38,0.45);
-    color: #fff;
-}
-.uc-disc {
-    background: radial-gradient(circle at 35% 35%, #e53935, #7b1a1a);
-    border-color: #ef5350;
-    box-shadow: 0 0 10px rgba(239,83,80,0.35);
-    color: #fff;
-}
+/* Header colours by state */
+.uc-ok   .uc-header { background: #2e7d32; }
+.uc-irr  .uc-header { background: #1565c0; }
+.uc-fault .uc-header { background: #bf360c; }
+.uc-disc .uc-header { background: #616161; }
 
 /* ── Projects Tab Dropdown ── */
 .tab-dropdown-wrap {
