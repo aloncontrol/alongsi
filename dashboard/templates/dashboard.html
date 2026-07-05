@@ -560,10 +560,10 @@
     background: #2e5c44;
 }
 
-/* Individual Unit Circle */
+/* Individual Unit Card */
 .unit-circle {
-    width: 72px; height: 72px;
-    border-radius: 50%;
+    width: 78px; height: 72px;
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -913,6 +913,11 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 
 
+// Remember last viewed project across tab switches
+{% if active_pid != 0 %}
+localStorage.setItem('lastActivePid', '{{ active_pid }}');
+{% endif %}
+
 function toggleProjDropdown(e) {
     e.stopPropagation();
     {% if active_pid != 0 %}
@@ -921,7 +926,13 @@ function toggleProjDropdown(e) {
     switchTab('projects');
     return;
     {% endif %}
-    // No project selected — open the picker dropdown
+    // No project in URL — check if we have a remembered project
+    const lastPid = localStorage.getItem('lastActivePid');
+    if (lastPid) {
+        window.location.href = '/?pid=' + lastPid;
+        return;
+    }
+    // No remembered project — open the picker dropdown
     const dd = document.getElementById('projDropdown');
     const arrow = document.getElementById('tabArrow');
     const isOpen = dd.classList.contains('open');
