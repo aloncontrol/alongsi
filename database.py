@@ -894,14 +894,12 @@ def rebuild_active_alerts_from_snapshots(conn, project_id):
 
     # For each candidate, pick the best alert code to display
     for uid in candidate_ids:
-        # 1st: most recent enabled, non-resolution alert in last 90 days
+        # 1st: most recent non-resolution alert in last 90 days (all types, not just "active")
         alert_row = conn.execute(f"""
             SELECT a.alert_code, a.message, a.record_date
             FROM alerts a
-            JOIN alert_settings s ON a.alert_code = s.alert_code
             WHERE a.control_unit_id = ?
               AND a.alert_code NOT IN ({res_codes})
-              AND s.is_active = 1
               AND a.record_date >= datetime('now', '-90 days')
             ORDER BY a.record_date DESC LIMIT 1
         """, (uid,)).fetchone()

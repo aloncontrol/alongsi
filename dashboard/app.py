@@ -180,10 +180,10 @@ def index():
         if d["connection_status"] != 1:
             d["primary_alert_category"] = "תקשורת"
             d["primary_alert_name"] = "ניתוק תקשורת"
-        # device_alarm set but no specific alert in history → show generic "תקלת מכשיר"
+        # device_alarm set but no specific alert code found → show generic (not "חומרה")
         elif d.get("device_alarm") and (d["device_alarm"] or 0) != 0 and not code:
-            d["primary_alert_category"] = "חומרה"
-            d["primary_alert_name"] = "התראת מכשיר"
+            d["primary_alert_category"] = "התראת מכשיר"
+            d["primary_alert_name"] = "התראה פעילה"
 
         # Attach battery stats
         batt = battery_stats.get(d["control_unit_id"])
